@@ -334,6 +334,29 @@ def wordlists(profile: str) -> list[Path]:
     return [p for p in out if p.exists() or p == goad_wordlist()]
 
 
+_HASHCAT_USABLE: Optional[bool] = None
+
+
+def hashcat_usable(hc: str) -> bool:
+    """True only if hashcat has a working compute backend.
+
+    Headless Kali VMs/containers ship hashcat but no OpenCL/CUDA runtime, so it
+    dies with 'No OpenCL, HIP or CUDA compatible platform found'. Probe once and
+    cache, so we skip hashcat and go straight to john instead of eating a
+    240s timeout per wordlist.
+    """
+    global _HASHCAT_USABLE
+    if _HASHCAT_USABLE is not None:
+        return _HASHCAT_USABLE
+    info = run([hc, "-I"], timeout=20).lower()
+    bad = ("no devices found" in info or "no opencl" in info
+           or "no backend" in info or "not compatible platform" in info)
+    _HASHCAT_USABLE = bool(info) and not bad
+    if not _HASHCAT_USABLE:
+        print("[*] hashcat has no compute backend (VM/no GPU) -> using john")
+    return _HASHCAT_USABLE
+
+
 def crack(mode: str, hashfile: Path, profile: str) -> dict[str, str]:
     if not hashfile.exists() or hashfile.stat().st_size == 0:
         return {}
@@ -353,7 +376,7 @@ def crack(mode: str, hashfile: Path, profile: str) -> dict[str, str]:
     cracked: dict[str, str] = {}
     hc = which("hashcat")
     pot = LOOT / "auto" / f"pot_{mode}.txt"
-    if hc:
+    if hc and hashcat_usable(hc):
         for wl in wordlists(profile):
             if not wl.exists():
                 continue

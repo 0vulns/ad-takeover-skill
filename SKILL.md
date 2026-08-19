@@ -68,6 +68,7 @@ rack before recon/roast/BloodHound/`ad_auto`. Full detail + fail→next:
 3. kali_status
 4. Docker + down → kali_up  (mode vpn if tun0 / HTB, else lan)
      SSH: key login already works; copy pack scripts to /opt/gotad if missing
+     VPN labs → kali_preflight (clamp tun0 mtu 1200 + clock); re-run after reconnect
 5. kali_bootstrap  (once per box; wait for it; i_am_authorized: true)
 6. Verify binaries (same check, Docker or SSH):
      nxc|netexec · nmap · hashcat
@@ -122,7 +123,7 @@ Do not dump this whole file — open the matching reference.
 | 06 | `spray` | Policy, spray, descriptions | `references/steps.md` §06 · `tools/netexec.md` |
 | 07 | `kerberoast` | User SPNs | `references/steps.md` §07 · `tools/impacket.md` |
 | 08 | `bloodhound` | Collect + **bh-next** | `tools/bloodhound.md` |
-| 09 | `lateral` | PTH, tickets, WinRM, LSASS | `tools/shells.md` |
+| 09 | `lateral` | PTH, tickets, WinRM, LSASS, LPE | `tools/shells.md` · `tools/lpe.md` |
 | 10 | `acl` | GenericAll / WriteDACL / … | `tools/bloodyad.md` |
 | 10b | `maq` `shadow` `rbcd` | MAQ + PKINIT + getST | `tools/tickets.md` · `tools/shadow.md` |
 | 11 | `delegation` | UC / CC / RBCD | `tools/impacket.md` |

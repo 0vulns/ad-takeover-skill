@@ -101,6 +101,7 @@ impacket-ticketer -nthash {{KRBTGT_CHILD}} -domain-sid CHILD \
 | Symptom | Next |
 | --- | --- |
 | clock skew | ntpdate the DC, rebuild the ticket |
+| TGS `Connection reset by peer` on VPN (AS-REQ works, getST/GetUserSPNs die) | path-MTU black-hole — `ip link set dev tun0 mtu 1200` (run `/opt/gotad/preflight.sh`), re-apply after reconnect |
 | Protected Users | TGT + `-k`. PTH will fail |
 | psexec blocked | wmiexec → smbexec → evil-winrm |
 | no `C$` | you are not local admin. stay in LDAP |
@@ -108,6 +109,7 @@ impacket-ticketer -nthash {{KRBTGT_CHILD}} -domain-sid CHILD \
 | ticketer ignored | wrong domain SID (lookupsid 500) |
 | getST `KDC_ERR_BADOPTION` | RBCD principal has no SPN — use a Kerberoastable user, or add one |
 | no WinRM (5985 closed) | `smbclient.py` / `atexec` with the Administrator hash, not evil-winrm |
+| atexec returns nothing on `&`/`&&`-chained commands | quoting eats the chain — run **one command per call** (`type flag.txt`, then the next) |
 
 ## Chain
 

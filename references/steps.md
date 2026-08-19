@@ -8,6 +8,15 @@ agent checklist — when to skip, what “done” means. Commands: `commands.md`
 ## 01 Attack box
 Done: `nxc smb {{DC}}` and `nxc ldap {{DC}}` respond. Clock within 5 minutes.
 Skip macvlan on HTB VPN — you already have `tun0`. Use `docker-compose.vpn.yml`.
+**VPN labs: run the preflight before any Kerberos.** `tun0` often negotiates an
+MTU (1300) above the real path MTU (~1230), so full-MSS TGS-REQs are silently
+black-holed (`Connection reset by peer`) even though AS-REQs succeed. Clamp it
+and sync the clock — re-run after any VPN reconnect:
+```
+/opt/gotad/preflight.sh {{DC}} tun0 1200
+# manual: ip link set dev tun0 mtu 1200 ; ntpdate -u {{DC}}
+# PMTU probe: ping -M do -s 1400 -c1 {{DC}}  (fails => path MTU below full segment)
+```
 
 ## 02 Recon
 Done: host list with roles (DC vs member vs SQL vs HTTP vs CA).
@@ -15,9 +24,15 @@ If only 88/389/445 on one IP, it is a single-DC box. Still run the chain.
 
 ## 03 Unauth enum
 Done: `users.txt` or a hard no on null/guest.
-RID cycle (`lookupsid`) often works when LDAP anonymous does not.
+RID cycle (`lookupsid`) often works when LDAP anonymous does not — **but on a
+slow/VPN link RID-brute times out (`NetBIOSTimeout`); use bulk anonymous LDAP
+instead** (`enum.md` "High latency"): one query each for all users+descriptions,
+AS-REP roastable, and SPNs.
 Try `guest` with an **empty password** — null is often denied while guest binds.
 guest is first-class: LDAP + BloodHound + Kerberoast `-no-pass` all work from it.
+**Fingerprint early:** match the domain / DC name / open ports against
+`ad-writeups/INDEX.md` — a known box (e.g. `thm.local` → Operation Endgame) hands
+you the intended path and saves brute-forcing.
 
 ## 04 Poison + relay
 Skip on most HTB PWN networks (no L2 broadcast). Do it on GOAD / local labs.
@@ -42,6 +57,9 @@ Then `bh-next.py` — do not guess the next ACE.
 
 ## 09 Lateral
 Spray the new cred/hash across the CIDR. No local admin → stay in LDAP (10–12).
+Landed a low-priv shell? `tools/lpe.md`: `whoami /priv` first — SeImpersonate
+(potato) or SeBackupPrivilege (offline NTDS/SAM) is the usual SYSTEM path. LPE is
+for a cred, not the goal — the goal is DCSync (16).
 
 ## 10 ACL + MAQ + shadow + RBCD
 GenericAll / GenericWrite / WriteDACL / WriteOwner / ForceChangePassword /

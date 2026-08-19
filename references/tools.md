@@ -20,6 +20,7 @@ Open **one** card. Do not dump this folder.
 | LLMNR / relay / coerce / IPv6 | `tools/relay.md` | waiting for a roast |
 | 18200 / 13100 / 5600 / 1000 | `tools/crack.md` | john-the-long-way first |
 | Landed shells | `tools/shells.md` | dropping a beacon |
+| SYSTEM on the box (SeImpersonate / SeBackup) | `tools/lpe.md` | assuming you need DA first |
 | Null / RID / offline LDAP | `tools/enum.md` | BloodHound with no cred |
 | On-host after a shell | `tools/onhost.md` | more nxc from Kali |
 

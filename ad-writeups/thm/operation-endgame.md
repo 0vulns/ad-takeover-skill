@@ -54,6 +54,25 @@ guest (empty password) → BloodHound / LDAP → **Kerberoast `CODY_ROY` (`-no-p
 - **getST target = `ldap/` for DCSync**, `cifs/` for C$. (`tickets.md`, `impacket.md`)
 - **guest empty password is first-class**; `bloodyAD -p ''` is the tool limitation, not a dead end. (`enum.md`, `bloodyad.md`)
 
+## Live-run gotchas (from a real 48-min run)
+
+Things that cost time on the wire, now carded so the next run doesn't repeat them:
+
+- **VPN path-MTU black-hole.** `tun0` at MTU 1300 dropped every full-MSS TGS-REQ
+  (`Connection reset by peer`) while small AS-REQs passed. `getTGT` worked but
+  `GetUserSPNs`/`getST` didn't. Fix before any Kerberos: `ip link set dev tun0 mtu 1200`
+  (`/opt/gotad/preflight.sh {{DC}} tun0 1200`), re-apply after reconnect.
+- **High latency kills RID-brute.** `--rid-brute` died on `NetBIOSTimeout` (~250ms
+  RTT); bulk anonymous LDAP pulled all users in a few queries (`enum.md`).
+- **No GPU in the VM.** `hashcat` → `No OpenCL … platform found`; use `john` (CPU).
+- **guest RBCD write must go over Kerberos.** `impacket-rbcd … -no-pass` (NTLM) is
+  rejected (`NTLM needs domain\username and a password`). `getTGT -no-pass` for
+  guest, `export KRB5CCNAME`, then `rbcd -k -no-pass`. Quote the computer as `'AD$'`.
+- **DCSync grant, bloodyAD absent.** `impacket-dacledit` fallback: `-rights DCSync`
+  (case-sensitive), and `-dc-host AD.thm.local` **not** `-dc-ip` (else
+  `KDC_ERR_PREAUTH_FAILED` because it seeks an `ldap/<IP>` ticket).
+- **atexec quoting.** `&`-chained commands return nothing — one command per call.
+
 ## Techniques to card
 
 guest/empty-password · BloodHound/rusthound-ce · Kerberoast `-no-pass` · GenericWrite on DC computer

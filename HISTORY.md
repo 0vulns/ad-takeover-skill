@@ -18,3 +18,15 @@ Authorized-lab AD takeover skill. No website. Lab / RoE only.
    RBCD via an existing-SPN user, getST `ldap/` vs `cifs/`, and no-WinRM → smbclient/atexec.
    Evals: `mcp-first`, `endgame-guest-rbcd`, `forest-htb`, `active-htb`, `blackfield-htb`
    (goad-still-works kept). `git init` + `.gitignore` + initial commit.
+10. **Refinement #1 (live Endgame run)** — turned a real 48-min run into fixes:
+    `scripts/preflight.sh` (tun0 mtu 1200 + clock + verify + null/guest) and MCP
+    `kali_preflight`; VPN path-MTU carded across steps.md/kali-docker.md and
+    impacket/tickets/netexec Fail→next; latency-aware bulk-LDAP recon (enum.md,
+    commands.md); `john`-default in GPU-less VMs (crack.md + ad-auto hashcat-backend
+    probe); the real empty-password guest→RBCD path (`getTGT` + `-k -no-pass`, quote
+    `'AD$'`); DCSync-grant fallback (`dacledit -rights DCSync -dc-host`, not `-dc-ip`);
+    atexec one-command-per-call. New `references/tools/lpe.md` (Local Privilege
+    Escalation: SeImpersonate/potato, SeBackup→NTDS) wired into tools/onhost/steps/
+    technique-map. MCP: `ad_auto`/`ad_plan` return parsed digests, `kali_exec`
+    background + `kali_logs`, `GOTAD_LOOT` env (no LLM in the server). `.refinements/`
+    tracked with flag/password/hashes redacted.

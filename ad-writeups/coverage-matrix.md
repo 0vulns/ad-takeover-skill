@@ -73,3 +73,21 @@ Kerberoastable `CODY_ROY` that guest could roast immediately.
 | RBCD via existing user SPN | (c) gap | cards only taught MAQ+`FAKE$` | tickets.md now: existing-SPN user is a valid RBCD principal |
 | getST `ldap/` for DCSync | (b) | tickets.md showed `cifs/` only | tickets.md/impacket.md: `ldap/` for DCSync, `cifs/` for C$ |
 | No WinRM → smbclient/atexec | (d) default fails | shells.md defaulted to evil-winrm | shells.md/impacket.md: check `nxc winrm`; fall to smbclient.py/atexec |
+
+### Second run (refinement #1) — environment/latency lessons
+
+A later end-to-end run (`.refinements/1.md`, 47m54s, DA + NTDS) succeeded but lost
+most of its time to environment issues the skill now preempts:
+
+| Lesson | Root cause | Fix carded |
+| --- | --- | --- |
+| VPN path-MTU black-hole | tun0 mtu 1300 > real path MTU ~1230; full-MSS TGS-REQs dropped | `scripts/preflight.sh` mtu 1200; steps.md §01, kali-docker.md, MTU Fail→next in impacket/tickets/netexec |
+| RID-brute NetBIOSTimeout | ~250ms RTT vs chatty per-RID | enum.md bulk-LDAP recipes; steps.md §03 |
+| hashcat no OpenCL in VM | no GPU runtime | crack.md john-default; ad-auto.py hashcat-backend probe → john |
+| guest RBCD NTLM refused | empty pw can't NTLM | bloodyad.md/tickets.md getTGT + `-k -no-pass`; quote `'AD$'` |
+| dacledit PREAUTH_FAILED / casing | `-dc-ip` seeks ldap/<IP>; `DCSYNC` case | bloodyad.md/tickets.md `-dc-host` + `-rights DCSync` |
+| atexec `&`-chain empty | quoting drops the chain | impacket.md/shells.md one-command-per-call |
+
+Meta-lesson: a one-shot `kali_preflight` (MTU + clock + verify + null/guest probe)
+plus MCP `ad_auto`/`ad_plan` digests remove the recon/plumbing time so the run is
+the attack path, not the environment fight.

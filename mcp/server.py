@@ -57,15 +57,40 @@ TOOLS: list[dict] = [
         "inputSchema": _schema({"i_am_authorized": AUTH}, ["i_am_authorized"]),
     },
     {
+        "name": "kali_preflight",
+        "description": "VPN preflight before Kerberos: clamp tun0 MTU to 1200, sync clock, verify rack, probe null/guest. Run once per box and after any VPN reconnect.",
+        "inputSchema": _schema(
+            {
+                "i_am_authorized": AUTH,
+                "dc": {"type": "string", "description": "DC IP (for ntpdate + null/guest probe)"},
+                "iface": {"type": "string", "description": "default tun0"},
+                "mtu": {"type": "integer", "description": "default 1200"},
+            },
+            ["i_am_authorized"],
+        ),
+    },
+    {
         "name": "kali_exec",
-        "description": "Run a shell command on Kali. Public tools only. Lab / RoE.",
+        "description": "Run a shell command on Kali. Public tools only. Lab / RoE. Set background=true for long scans (nmap) → returns a logfile to read with kali_logs.",
         "inputSchema": _schema(
             {
                 "i_am_authorized": AUTH,
                 "command": {"type": "string", "description": "bash -lc command"},
                 "timeout": {"type": "integer", "description": "seconds, default 120, max 600"},
+                "background": {"type": "boolean", "description": "detach with nohup; poll output via kali_logs"},
             },
             ["i_am_authorized", "command"],
+        ),
+    },
+    {
+        "name": "kali_logs",
+        "description": "Tail a background job logfile under loot (from a kali_exec background run).",
+        "inputSchema": _schema(
+            {
+                "path": {"type": "string", "description": "logfile path (relative to loot or absolute under loot)"},
+                "lines": {"type": "integer", "description": "tail N lines, default 60"},
+            },
+            ["path"],
         ),
     },
     {
@@ -167,6 +192,46 @@ def _q(s: str) -> str:
     return "'" + s.replace("'", "'\"'\"'") + "'"
 
 
+def _digest(kali: Kali) -> str:
+    """Compact, parsed summary of ad-auto state — what happened + next edge.
+
+    The host model decides; this just trims raw logs to the signal:
+    owned creds, done steps, the printed next edge(s), takeover flag.
+    """
+    r = kali.read(f"{REMOTE_LOOT}/auto/state.json", 20)
+    if not r.ok:
+        return ""
+    try:
+        st = json.loads(r.stdout.split("[ok]\n", 1)[-1] if "[ok]" in r.stdout else r.stdout)
+    except (json.JSONDecodeError, AttributeError):
+        # read() wraps output; strip the "$ cat …\n[ok]\n" header if present
+        body = r.stdout.split("\n", 2)[-1]
+        try:
+            st = json.loads(body)
+        except json.JSONDecodeError:
+            return ""
+    lines = ["== digest =="]
+    dom = st.get("domain") or "?"
+    dc = st.get("dc") or "?"
+    lines.append(f"domain={dom} dc={dc} profile={st.get('profile')}")
+    creds = st.get("creds") or []
+    if creds:
+        who = ", ".join(
+            c.get("user", "?") + (":<pw>" if c.get("password") else (":<hash>" if c.get("nthash") else ""))
+            for c in creds[:8]
+        )
+        lines.append(f"owned({len(creds)}): {who}")
+    if st.get("done"):
+        lines.append("done: " + ", ".join(st["done"]))
+    if st.get("takeover"):
+        lines.append("TAKEOVER: true (DCSync reached)")
+    nm = st.get("next_manual") or []
+    if nm:
+        lines.append("next:")
+        lines += [f"  - {n}" for n in nm[:6]]
+    return "\n".join(lines)
+
+
 def handle(kali: Kali, name: str, args: dict) -> str:
     args = args or {}
     if name == "kali_status":
@@ -184,6 +249,18 @@ def handle(kali: Kali, name: str, args: dict) -> str:
             return err
         return kali.exec(f"bash {REMOTE_ROOT}/bootstrap.sh", 600).text()
 
+    if name == "kali_preflight":
+        err = _need_auth(args)
+        if err:
+            return err
+        parts = [f"bash {REMOTE_ROOT}/preflight.sh"]
+        if args.get("dc"):
+            parts.append(_q(args["dc"]))
+            parts.append(_q(str(args.get("iface") or "tun0")))
+            if args.get("mtu"):
+                parts.append(str(int(args["mtu"])))
+        return kali.exec(" ".join(parts), 120).text()
+
     if name == "kali_exec":
         err = _need_auth(args)
         if err:
@@ -191,7 +268,25 @@ def handle(kali: Kali, name: str, args: dict) -> str:
         cmd = (args.get("command") or "").strip()
         if not cmd:
             return "empty command"
+        if args.get("background"):
+            log = f"{REMOTE_LOOT}/auto/bg_{abs(hash(cmd)) % 10**8}.log"
+            bg = (
+                f"mkdir -p {REMOTE_LOOT}/auto && "
+                f"nohup bash -lc {_q(cmd)} > {log} 2>&1 & echo started pid $! ; echo log {log}"
+            )
+            return kali.exec(bg, 20).text() + f"\n[poll with kali_logs path={log}]"
         return kali.exec(cmd, _timeout(args)).text()
+
+    if name == "kali_logs":
+        rel = args["path"]
+        path = rel if rel.startswith("/") else f"{REMOTE_LOOT}/{rel.lstrip('/')}"
+        if not path.startswith(REMOTE_LOOT):
+            return "refused: path must be under loot"
+        try:
+            n = max(1, min(int(args.get("lines") or 60), 2000))
+        except (TypeError, ValueError):
+            n = 60
+        return kali.exec(f"tail -n {n} {_q(path)} 2>/dev/null; echo '---'; pgrep -a -f nohup >/dev/null 2>&1 && echo '(a background job is still running)' || true", 20).text()
 
     if name == "ad_plan":
         parts = [f"python3 {REMOTE_ROOT}/ad-auto.py --plan"]
@@ -201,7 +296,9 @@ def handle(kali: Kali, name: str, args: dict) -> str:
             parts += ["--dc", _q(args["dc"])]
         if args.get("domain"):
             parts += ["--domain", _q(args["domain"])]
-        return kali.exec(" ".join(parts), 30).text()
+        out = kali.exec(" ".join(parts), 30).text()
+        digest = _digest(kali)
+        return f"{out}\n\n{digest}" if digest else out
 
     if name == "ad_auto":
         err = _need_auth(args)
@@ -225,7 +322,9 @@ def handle(kali: Kali, name: str, args: dict) -> str:
             parts.append("--resume")
         if args.get("abuse"):
             parts.append("--abuse")
-        return kali.exec(" ".join(parts), _timeout(args, 300)).text()
+        out = kali.exec(" ".join(parts), _timeout(args, 300)).text()
+        digest = _digest(kali)
+        return f"{out}\n\n{digest}" if digest else out
 
     if name == "bh_next":
         path = args.get("path") or f"{REMOTE_LOOT}/bloodhound"

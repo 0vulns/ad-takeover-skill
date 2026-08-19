@@ -48,10 +48,28 @@ Optional baked image (slow, tools inside the layer):
 docker build -t gotad-kali -f docker/Dockerfile .
 ```
 
+## VPN / tun0 (HTB / THM)
+
+Two things bite on VPN labs before any attack — the preflight handles both:
+
+```
+/opt/gotad/preflight.sh {{DC}} tun0 1200
+```
+
+1. **Path-MTU black-hole.** `tun0` negotiates ~1300 but the real path MTU is
+   lower (~1230). Small AS-REQs pass; full-MSS **TGS-REQs carry the TGT, fill a
+   segment, and get dropped** → Kerberoast/getST die with `Connection reset by
+   peer`. Fix: `ip link set dev tun0 mtu 1200`. **Re-apply after any reconnect.**
+   Diagnose with a DF-set ping ladder: `ping -M do -s 1400 -c1 {{DC}}` fails while
+   `-s 1200` passes ⇒ clamp the MTU.
+2. **Passwordless sudo may be absent** on a plain Kali VM. Privileged commands
+   (`openvpn`, `ip link ... mtu`) need `echo <pass> | sudo -S <cmd>`. The
+   preflight does this via `KALI_SUDO_PASS` (defaults to `kali`).
+
 ## Clock
 
-Clock skew breaks Kerberos. If tickets fail: `ntpdate -u {{DC}}` or
-`timedatectl` against the DC.
+Clock skew breaks Kerberos (`KRB_AP_ERR_SKEW`). If tickets fail: `ntpdate -u {{DC}}`
+or `timedatectl` against the DC. The preflight runs `ntpdate` for you.
 
 ## Sanity
 

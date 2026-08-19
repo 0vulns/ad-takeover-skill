@@ -14,7 +14,8 @@ Use this to practice one technique across multiple authorized labs.
 | GenericWrite on DC computer | — | — | Endgame (`AD$`) |
 | ForceChangePassword | Blackfield | Lannister ladder | — |
 | WriteDACL / DCSync rights | Forest | ACL chains | Endgame (grant after S4U) |
-| SeBackupPrivilege / offline NTDS | Blackfield | — | — |
+| SeBackupPrivilege / offline NTDS (`tools/lpe.md`) | Blackfield | — | — |
+| Local privesc: SeImpersonate / potato | service-account boxes (IIS/MSSQL) | CASTELBLACK-style | — |
 | ADCS ESC1–8 | Certified, Certificate, Mirage | essos CA / templates | — |
 | Shadow credentials | Mirage | ACL GenericWrite users | — |
 | RBCD (MAQ + FAKE$) | Pirate | MAQ + computer write | — |

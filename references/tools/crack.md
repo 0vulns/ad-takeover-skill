@@ -29,11 +29,14 @@ hashcat -m 18200 asrep.txt /opt/gotad/conf/wordlist-lab.txt
 hashcat -m 18200 asrep.txt --show --outfile-format 3
 ```
 
-John fallback (no GPU):
+John (CPU) — **the default inside a headless Kali VM/container**. Most labs have
+no GPU runtime, so `hashcat` dies with `No OpenCL, HIP or CUDA compatible
+platform found`. Don't fight it — go straight to john (rockyou at CPU speed still
+finishes lab hashes in minutes):
 
 ```
-john --format=krb5asrep --wordlist=rockyou.txt asrep.txt
-john --format=krb5tgs    --wordlist=rockyou.txt kerb.txt
+john --format=krb5asrep --wordlist=/usr/share/wordlists/rockyou.txt asrep.txt
+john --format=krb5tgs    --wordlist=/usr/share/wordlists/rockyou.txt kerb.txt
 john --show --format=krb5asrep asrep.txt
 ```
 
@@ -57,11 +60,15 @@ targetedKerberoast.py -d {{DOMAIN}} -u {{USER}} -p '{{PASS}}' --dc-ip {{DC}} \
 - Pair the **username inside the hash** with the plaintext. Do not assign the first crack to the first file line.
 - `Status: Exhausted` is a result. Keep the hash. Move to BloodHound.
 - `sql_svc` on GOAD is intentionally hard. Stop burning GPU.
+- **AS-REP roast came back 0-cracked (rockyou) and guest binds?** Don't spray —
+  pivot to Kerberoast from guest (`impacket.md`, Operation Endgame). The room's
+  intended cred is usually an SPN hash, not an AS-REP one.
 
 ## Fail → next
 
 | Symptom | Next |
 | --- | --- |
+| `No OpenCL, HIP or CUDA compatible platform found` (VM/container) | use `john` (CPU) — default in a headless box. `hashcat -D 1` is slower |
 | no GPU / `clGetPlatformIDs` | john, or `-D 1` (CPU). labs do not need a 4090 |
 | AES TGS, 13100 empty | 19700/19600 |
 | 5600 not cracking | relay the next handshake instead |

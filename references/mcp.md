@@ -31,6 +31,7 @@ One server at a time. Docker **or** SSH — set `GOTAD_TRANSPORT`.
 | `GOTAD_SSH` | `root@127.0.0.1` | `user@host` |
 | `GOTAD_SSH_PORT` | `22` | |
 | `GOTAD_SSH_KEY` | empty | identity file |
+| `GOTAD_LOOT` | `/loot` | loot dir (SSH Kali VM with no `/loot` bind → e.g. `/home/kali/loot`) |
 
 SSH uses `BatchMode` + `IdentitiesOnly`. Get a key login working first:
 
@@ -52,13 +53,19 @@ ssh root@HOST 'ls /opt/gotad/bootstrap.sh /opt/gotad/ad-auto.py'
 | `kali_status` | no | container / ssh alive? |
 | `kali_up` | yes | `compose up -d` (`lan` or `vpn`) |
 | `kali_bootstrap` | yes | `/opt/gotad/bootstrap.sh` |
-| `kali_exec` | yes | arbitrary bash on Kali |
-| `ad_auto` | yes | decision engine |
-| `ad_plan` | no | next action only |
+| `kali_preflight` | yes | VPN: clamp tun0 mtu 1200 + ntpdate + verify + null/guest probe |
+| `kali_exec` | yes | arbitrary bash on Kali (`background:true` for long scans) |
+| `kali_logs` | no | tail a background job logfile under loot |
+| `ad_auto` | yes | decision engine (returns a parsed digest) |
+| `ad_plan` | no | next action only (+ digest) |
 | `bh_next` | no | BloodHound zip → edges |
 | `mssql_hop` | yes | impersonate / links |
-| `loot_ls` / `loot_read` | no | `/loot` only |
-| `loot_write` | yes | `/loot` only |
+| `loot_ls` / `loot_read` | no | loot only |
+| `loot_write` | yes | loot only |
+
+`ad_auto` / `ad_plan` append a `== digest ==` block (owned creds, done steps, the
+printed next edge) parsed from `auto/state.json` — the model still decides; the
+server just trims raw logs. No LLM runs inside the server.
 
 Mutating tools refuse unless `i_am_authorized: true`.
 
@@ -72,6 +79,7 @@ and verify binaries **before** recon / roast / BloodHound / `ad_auto`.
 3. `kali_status`.
 4. Docker + down → `kali_up` (`vpn` on tun0 / HTB, else `lan`).
    SSH: key login already works; copy pack scripts to `/opt/gotad` if missing (above).
+   VPN labs: `kali_preflight` (clamp tun0 mtu 1200 + clock) — re-run after any reconnect.
 5. `kali_bootstrap` **once per box**. Wait for it. `i_am_authorized: true`.
 6. **Verify binaries** — one `kali_exec`, same on Docker and SSH:
 
@@ -91,7 +99,13 @@ Any `MISSING` line → fix `scripts/bootstrap.sh` **and** `docker/Dockerfile`, t
 re-`kali_bootstrap`. Never `apt`/`pip` ad-hoc inside the kill chain.
 
 Do not open a Relayer / Responder / mitm6 via MCP — those hang. Point the
-operator at an interactive `docker exec -it` / SSH tty.
+operator at an interactive `docker exec -it` / SSH tty. Long scans (nmap `-p-`):
+use `kali_exec` with `background: true`, then poll with `kali_logs`, so a slow
+scan isn't lost to a tool timeout.
+
+SSH Kali VM without passwordless sudo: privileged commands (`ip link … mtu`,
+`openvpn`) need `echo <pass> | sudo -S …`. `kali_preflight` / `preflight.sh`
+handle this via `KALI_SUDO_PASS` (defaults to `kali`).
 
 ## Fail → next
 

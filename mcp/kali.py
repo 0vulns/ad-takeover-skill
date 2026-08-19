@@ -13,7 +13,9 @@ PACK = Path(__file__).resolve().parent.parent
 DEFAULT_COMPOSE = PACK / "docker"
 DEFAULT_CONTAINER = "gotad-kali"
 REMOTE_ROOT = "/opt/gotad"
-REMOTE_LOOT = "/loot"
+# Docker bind-mounts /loot. A plain SSH Kali VM usually has no /loot — set
+# GOTAD_LOOT (e.g. /home/kali/loot) so loot/state.json land in a real dir.
+REMOTE_LOOT = os.environ.get("GOTAD_LOOT", "/loot").rstrip("/") or "/loot"
 MAX_OUT = 80_000
 
 

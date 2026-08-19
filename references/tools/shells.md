@@ -49,6 +49,7 @@ Once on the box: `onhost.md`. From Kali, prefer `nxc -M lsassy` before you RDP.
 | no local admin anywhere | stay in LDAP (ACL / ADCS / delegation) |
 | Protected Users | getTGT, never PTH |
 | WinRM filtered / 5985 closed | `smbclient.py` (C$) or `atexec` with the hash — not evil-winrm |
+| atexec `&`-chained command returns empty | one command per `atexec` call; the quoting drops chained `&`/`&&` |
 | RDP allowed, exec not | you are a desktop user. dump files, not LSASS |
 | mssqlclient but not sysadmin | impersonate / links (`impacket.md`) |
 

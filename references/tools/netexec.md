@@ -56,6 +56,8 @@ nxc mssql|winrm|rdp {{CIDR}} -u {{USER}} -p '{{PASS}}'
 | `STATUS_ACCOUNT_LOCKED_OUT` | stop spray. wait. kerbrute next time |
 | `KDC_ERR_PREAUTH_FAILED` | bad pass, not “Kerberos broken” |
 | `KRB_AP_ERR_SKEW` | `ntpdate -u {{DC}}` |
+| Kerberos/`--kerberoasting` RST on VPN, SMB fine | tun0 path-MTU black-hole — `ip link set dev tun0 mtu 1200` (`/opt/gotad/preflight.sh`) |
+| `NetBIOSTimeout` on `--rid-brute` over a slow/VPN link | too chatty for ~250ms RTT — pivot to bulk anonymous LDAP (`enum.md`) |
 | LDAP bind fails, SMB works | keep SMB; try `-k` or guest |
 | module missing | `nxc smb --list-modules` then Impacket |
 

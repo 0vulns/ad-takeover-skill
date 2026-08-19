@@ -63,5 +63,6 @@ unattend.xml · SYSVOL scripts you already spidered · Service account
 
 ## Chain
 
-Shell → lsassy/Rubeus dump → DA cred/ticket → secretsdump from Kali.
+Shell → (not local admin? `lpe.md` — SeImpersonate/SeBackup → SYSTEM) →
+lsassy/Rubeus dump → DA cred/ticket → secretsdump from Kali.
 On-host is a fallback, not the plan.

