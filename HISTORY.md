@@ -11,7 +11,7 @@ Authorized-lab AD takeover skill. No website. Lab / RoE only.
 7. **Abuse layer** — `bh-next.py` (zip → next edge), shadow / RBCD / MAQ, LAPS/gMSA, trust hop, `mssql-hop.py`, ESC9–15, GPO/SCCM cards.
 8. **MCP** — `mcp/server.py` drives Kali via **Docker** or **SSH**. Mutating tools need `i_am_authorized`.
 9. **MCP-first, repo cleanup, CTF hardening** — hard rule *MCP → bootstrap → verify → attack* at
-   the top of SKILL.md, mirrored in `references/mcp.md` + README (transport env, SSH copy-to-`/opt/gotad`,
+   the top of SKILL.md, mirrored in `references/mcp.md` + README (transport env, SSH copy-to-`/opt/adtk`,
    fail→next). `bootstrap.sh` now self-verifies the rack (adds rusthound-ce). Reorg paths fixed
    (`references/labs/`). Added `ad-writeups/thm/operation-endgame.md` + coverage matrix +
    Endgame session postmortem; carded the guest/empty-password path, Kerberoast-before-spray,
@@ -28,5 +28,16 @@ Authorized-lab AD takeover skill. No website. Lab / RoE only.
     atexec one-command-per-call. New `references/tools/lpe.md` (Local Privilege
     Escalation: SeImpersonate/potato, SeBackup→NTDS) wired into tools/onhost/steps/
     technique-map. MCP: `ad_auto`/`ad_plan` return parsed digests, `kali_exec`
-    background + `kali_logs`, `GOTAD_LOOT` env (no LLM in the server). `.refinements/`
+    background + `kali_logs`, `ADTK_LOGS` env (no LLM in the server). `.refinements/`
     tracked with flag/password/hashes redacted.
+11. **De-brand + open-source polish** — MIT `LICENSE` (authorized-use notice) and
+    `CONTRIBUTING.md`; rewrote README for newcomers (disclaimer, features, Docker/SSH
+    quickstart, MCP + env table, how-it-works, layout). Renamed the `gotad` brand to
+    **`adtk`** everywhere (env `ADTK_*`, `/opt/adtk`, container/compose `adtk-kali`).
+12. **Per-target logs + config templates + better MCP** — `loot/` → `logs/<dc-ip>/`
+    so runs against different DCs never mix (`ad-auto.py` rebinds its tree from `--dc`;
+    `--resume` reuses the newest). `conf/*` are now `*.example` templates (live copies
+    the agent writes per lab are git-ignored). MCP transport **auto-detects** (Docker if
+    the container is up, else SSH) and tracks the current target from the DC IP, so
+    `logs_ls`/`logs_read`/`logs_write` (renamed from `loot_*`), `bh_next`, digests, and
+    background logs all resolve under `logs/<dc-ip>/`.

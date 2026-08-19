@@ -15,7 +15,7 @@ nxc mssql {{CIDR}} -u {{USER}} -p '{{PASS}}' -d {{DOMAIN}}
 nxc mssql HOST -u {{USER}} -p '{{PASS}}' -d {{DOMAIN}} \
   -q "SELECT SYSTEM_USER, IS_SRVROLEMEMBER('sysadmin')"
 
-python3 /opt/gotad/mssql-hop.py --i-am-authorized \
+python3 /opt/adtk/mssql-hop.py --i-am-authorized \
   --host HOST --domain {{DOMAIN}} --user {{USER}} --password '{{PASS}}'
 
 impacket-mssqlclient {{DOMAIN}}/{{USER}}:'{{PASS}}'@HOST

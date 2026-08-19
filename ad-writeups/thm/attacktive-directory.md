@@ -16,6 +16,6 @@ Administrator.
 5. Privilege path to DCSync or local admin on DC.
 6. Dump hashes / submit flags per room tasks.
 
-## GOTAD skill mapping
+## ADTK skill mapping
 
 `unauth` → `asrep` → `kerberoast` → `bloodhound` → `dcsync`

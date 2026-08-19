@@ -21,31 +21,31 @@ Substitute `IP_RANGE` (default `192.168.56`). Attack box is always `.200`.
 cd docker
 cp .env.example .env          # IP_RANGE + LAB_PARENT
 ../scripts/up.sh
-docker exec -it gotad-kali bash
-/opt/gotad/bootstrap.sh       # once
+docker exec -it adtk-kali bash
+/opt/adtk/bootstrap.sh       # once
 ```
 
 ## Bring-up (VPN)
 
 ```bash
 ../scripts/up.sh vpn
-docker exec -it gotad-kali bash
+docker exec -it adtk-kali bash
 # iface is tun0 — pass --iface tun0 to ad-auto.py
 ```
 
 Linux fallback when compose/macvlan is unavailable:
 
 ```bash
-docker run -d --name gotad-kali --network host --cap-add NET_ADMIN --cap-add NET_RAW \
-  -v gotad-home:/root -v "$PWD/loot:/loot" \
-  -v "$PWD/scripts/ad-auto.py:/opt/gotad/ad-auto.py:ro" \
+docker run -d --name adtk-kali --network host --cap-add NET_ADMIN --cap-add NET_RAW \
+  -v adtk-home:/root -v "$PWD/logs:/logs" \
+  -v "$PWD/scripts/ad-auto.py:/opt/adtk/ad-auto.py:ro" \
   kalilinux/kali-rolling sleep infinity
 ```
 
 Optional baked image (slow, tools inside the layer):
 
 ```bash
-docker build -t gotad-kali -f docker/Dockerfile .
+docker build -t adtk-kali -f docker/Dockerfile .
 ```
 
 ## VPN / tun0 (HTB / THM)
@@ -53,7 +53,7 @@ docker build -t gotad-kali -f docker/Dockerfile .
 Two things bite on VPN labs before any attack — the preflight handles both:
 
 ```
-/opt/gotad/preflight.sh {{DC}} tun0 1200
+/opt/adtk/preflight.sh {{DC}} tun0 1200
 ```
 
 1. **Path-MTU black-hole.** `tun0` negotiates ~1300 but the real path MTU is
@@ -82,10 +82,12 @@ nxc ldap {{DC}}
 
 If ping works but SMB does not, the container is on the wrong L2 domain.
 
-## Loot
+## Logs (per target)
+
+`/logs` is the bind-mount base; `ad-auto.py` writes one tree per DC:
 
 ```
-/loot
+/logs/<dc-ip>/
   nmap/ hashes/ bloodhound/ tickets/ adcs/ enum/ auto/
-  auto/state.json
+  auto/state.json   auto/report.txt
 ```

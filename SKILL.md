@@ -7,7 +7,7 @@ description: >
   scripts/ad-auto.py, and an MCP server (Docker or SSH) to drive Kali. Use whenever the user mentions
   AD, Active Directory, domain takeover, DCSync, Kerberoast, AS-REP, BloodHound,
   ADCS, ESC1, RBCD, golden ticket, NetExec, Impacket, Certipy, bloodyAD,
-  GOAD, GotAd, sevenkingdoms, Kali Docker, MCP Kali, SSH Kali, or a numbered 1-n AD kill chain.
+  GOAD, adtk, sevenkingdoms, Kali Docker, MCP Kali, SSH Kali, or a numbered 1-n AD kill chain.
   Always load this skill for AD lab work — do not improvise a thinner guide.
 compatibility: docker, kali-rolling, python3, authorized lab or CTF network only
 metadata:
@@ -33,7 +33,7 @@ command references live in this folder.
 | `scripts/bootstrap.sh` | Tool install inside Kali |
 | `mcp/server.py` | MCP stdio — Kali via Docker or SSH |
 | `references/mcp.md` | Wire Claude / Cursor |
-| `conf/` | hosts, krb5, lab wordlist |
+| `conf/` | `*.example` templates (hosts, krb5, lab wordlist) — copy + edit per lab |
 | `references/steps.md` | Step 01–16 checklist |
 | `references/tools.md` | Tool index — then **one** card in `references/tools/` |
 | `references/kali-docker.md` | Networking notes |
@@ -64,25 +64,28 @@ rack before recon/roast/BloodHound/`ad_auto`. Full detail + fail→next:
 
 ```
 1. Restate lab / RoE.
-2. Choose transport: GOTAD_TRANSPORT=docker  or  GOTAD_TRANSPORT=ssh
+2. Transport: leave ADTK_TRANSPORT unset to auto-pick (Docker if the container
+   is up, else SSH when ADTK_SSH is set), or force =docker / =ssh
 3. kali_status
 4. Docker + down → kali_up  (mode vpn if tun0 / HTB, else lan)
-     SSH: key login already works; copy pack scripts to /opt/gotad if missing
+     SSH: key login already works; copy pack scripts to /opt/adtk if missing
      VPN labs → kali_preflight (clamp tun0 mtu 1200 + clock); re-run after reconnect
 5. kali_bootstrap  (once per box; wait for it; i_am_authorized: true)
 6. Verify binaries (same check, Docker or SSH):
      nxc|netexec · nmap · hashcat
      GetUserSPNs.py|impacket-GetUserSPNs · secretsdump · getST · certipy · bloodyAD
-     /opt/gotad/ad-auto.py
+     /opt/adtk/ad-auto.py
 7. Only now: ad_plan / ad_auto / kali_exec for the current step
-8. loot_read auto/state.json and auto/report.txt
+     (the --dc you pass selects the per-target tree logs/<dc-ip>/)
+8. logs_read auto/state.json and auto/report.txt
 9. After a BloodHound collect: bh_next, then ONE kali_exec for the printed edge
 ```
 
-Transport env: `GOTAD_TRANSPORT` · `GOTAD_CONTAINER` · `GOTAD_COMPOSE` ·
-`GOTAD_SSH` · `GOTAD_SSH_PORT` · `GOTAD_SSH_KEY`.
+Transport env: `ADTK_TRANSPORT` (unset = auto) · `ADTK_CONTAINER` ·
+`ADTK_COMPOSE` · `ADTK_SSH` · `ADTK_SSH_PORT` · `ADTK_SSH_KEY` ·
+`ADTK_LOGS` (base log dir; per-target under `logs/<dc-ip>/`).
 
-`kali_bootstrap` = `/opt/gotad/bootstrap.sh`. Rack: nxc/netexec, Impacket
+`kali_bootstrap` = `/opt/adtk/bootstrap.sh`. Rack: nxc/netexec, Impacket
 (GetUserSPNs, secretsdump, getST, smbclient.py, atexec, wmiexec), Certipy,
 bloodyAD, BloodHound collector (bloodhound.py / rusthound-ce), nmap, hashcat,
 ldap-utils, smbclient, krb5-user. Missing after bootstrap → add it to
@@ -97,14 +100,14 @@ Do **not** start Relayer / Responder / mitm6 via MCP — they hang. Interactive
 cd docker
 cp .env.example .env          # set IP_RANGE + LAB_PARENT
 ../scripts/up.sh
-docker exec -it gotad-kali bash
-/opt/gotad/bootstrap.sh       # once, if you used the vanilla image
-python3 /opt/gotad/ad-auto.py --i-am-authorized --dc 192.168.56.11 --profile goad
+docker exec -it adtk-kali bash
+/opt/adtk/bootstrap.sh       # once, if you used the vanilla image
+python3 /opt/adtk/ad-auto.py --i-am-authorized --dc 192.168.56.11 --profile goad
 # or: --plan / --resume / --from acl / --abuse (lab only)
 
 # drive Kali from Claude / Cursor (MCP)
-# GOTAD_TRANSPORT=docker python3 mcp/server.py
-# GOTAD_TRANSPORT=ssh GOTAD_SSH=root@192.168.56.200 python3 mcp/server.py
+# ADTK_TRANSPORT=docker python3 mcp/server.py
+# ADTK_TRANSPORT=ssh ADTK_SSH=root@192.168.56.200 python3 mcp/server.py
 ```
 
 HTB / tun0: use `docker-compose.vpn.yml` and `--iface tun0`. Skip poison.

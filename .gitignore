@@ -1,5 +1,6 @@
-# Loot / target artifacts — never commit
-loot/
+# Per-target run artifacts (logs/<dc-ip>/…) — never commit; keep the dir
+logs/*
+!logs/.gitkeep
 ntds*
 secrets
 *.ccache
@@ -17,6 +18,11 @@ rockyou*
 docker/.env
 .env
 !docker/.env.example
+
+# conf/ ships *.example templates only; the live copies the agent writes
+# per lab (real hosts, krb5 realm, wordlist) stay untracked.
+conf/*
+!conf/*.example
 
 # Python
 __pycache__/

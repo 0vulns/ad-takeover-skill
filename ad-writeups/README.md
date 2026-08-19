@@ -20,7 +20,7 @@ attack (HTB, THM, GOAD homelab, signed RoE).
 | `techniques/` | Technique → which boxes use it |
 | `SOURCES.md` | Public writeup / repo links |
 
-## How to use with the GOTAD skill
+## How to use with the ADTK skill
 
 1. Pick a box from `INDEX.md`.
 2. Match techniques to cards in the ad-takeover skill (`tools/*.md`).

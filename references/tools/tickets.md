@@ -90,7 +90,7 @@ Only that host / that SPN. Useful after lsassy on a member.
 | Symptom | Next |
 | --- | --- |
 | `KRB_AP_ERR_SKEW` | `ntpdate -u {{DC}}`, rebuild |
-| getST / getTGT RST on VPN (small AS-REQ ok, TGS dies) | tun0 path-MTU — `ip link set dev tun0 mtu 1200` (`/opt/gotad/preflight.sh`); TGS-REQ carries the TGT and overflows the segment |
+| getST / getTGT RST on VPN (small AS-REQ ok, TGS dies) | tun0 path-MTU — `ip link set dev tun0 mtu 1200` (`/opt/adtk/preflight.sh`); TGS-REQ carries the TGT and overflows the segment |
 | `KRB_AP_ERR_MODIFIED` | wrong SPN or hostname vs /etc/hosts |
 | golden ignored | wrong SID (must be the **domain** SID, not the machine) |
 | getST `S_PRINCIPAL_UNKNOWN` | SPN not on that computer. Use BH / findDelegation |

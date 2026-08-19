@@ -8,7 +8,7 @@
 # Then it verifies the rack and probes null/guest so the first real command
 # isn't the thing that discovers the box is unreachable.
 #
-#   /opt/gotad/preflight.sh <DC_IP> [IFACE] [MTU]
+#   /opt/adtk/preflight.sh <DC_IP> [IFACE] [MTU]
 #   IFACE default tun0, MTU default 1200
 set -uo pipefail
 

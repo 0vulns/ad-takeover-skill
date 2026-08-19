@@ -1,7 +1,7 @@
 [
   {
     "id": "mcp-first",
-    "prompt": "New HTB/THM DC at 10.10.11.60, MCP (gotad-kali) is available. Take it over.",
+    "prompt": "New HTB/THM DC at 10.10.11.60, MCP (adtk-kali) is available. Take it over.",
     "expect": [
       "lab/RoE restated",
       "kali_status first",

@@ -21,6 +21,6 @@ riddles) → WinRM → VNC / desktop creds → DA.
 
 LDAP description spray · multi-user cascade · WinRM · local secret recovery
 
-## GOTAD skill mapping
+## ADTK skill mapping
 
 `unauth` / `spray` (descriptions) → `lateral` → local dump → `dcsync`

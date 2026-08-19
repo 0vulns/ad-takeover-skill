@@ -1,6 +1,6 @@
 #!/bin/bash
 # Install the public AD tool rack inside Kali. Run once.
-#   docker exec -it gotad-kali /opt/gotad/bootstrap.sh
+#   docker exec -it adtk-kali /opt/adtk/bootstrap.sh
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
@@ -32,20 +32,25 @@ if [ ! -d /root/tools/krbrelayx ]; then
   git clone --depth 1 https://github.com/dirkjanm/krbrelayx.git /root/tools/krbrelayx || true
 fi
 
-mkdir -p /loot/{nmap,hashes,bloodhound,tickets,adcs,enum,auto} /root/tools
+# Base log root; ad-auto.py creates the per-target logs/<dc-ip>/ tree at runtime.
+mkdir -p /logs /root/tools
 
-if [ -d /opt/gotad/conf ]; then
-  if [ ! -f /etc/hosts.gotad.bak ]; then
-    cp /etc/hosts /etc/hosts.gotad.bak
-    cat /opt/gotad/conf/hosts.goad >> /etc/hosts
+# conf/ ships *.example templates. Prefer a live file if the operator wrote one,
+# else fall back to the .example so a vanilla checkout still tools the box.
+if [ -d /opt/adtk/conf ]; then
+  hosts_src="/opt/adtk/conf/hosts.goad"; [ -f "$hosts_src" ] || hosts_src="/opt/adtk/conf/hosts.goad.example"
+  if [ -f "$hosts_src" ] && [ ! -f /etc/hosts.adtk.bak ]; then
+    cp /etc/hosts /etc/hosts.adtk.bak
+    cat "$hosts_src" >> /etc/hosts
   fi
-  if [ ! -f /etc/krb5.conf.gotad.bak ] && [ -f /opt/gotad/conf/krb5.conf ]; then
-    cp /etc/krb5.conf /etc/krb5.conf.gotad.bak 2>/dev/null || true
-    cp /opt/gotad/conf/krb5.conf /etc/krb5.conf
+  krb_src="/opt/adtk/conf/krb5.conf"; [ -f "$krb_src" ] || krb_src="/opt/adtk/conf/krb5.conf.example"
+  if [ -f "$krb_src" ] && [ ! -f /etc/krb5.conf.adtk.bak ]; then
+    cp /etc/krb5.conf /etc/krb5.conf.adtk.bak 2>/dev/null || true
+    cp "$krb_src" /etc/krb5.conf
   fi
 fi
 
-chmod +x /opt/gotad/ad-auto.py 2>/dev/null || true
+chmod +x /opt/adtk/ad-auto.py 2>/dev/null || true
 
 # Verify the rack. Same check the MCP loop runs (SKILL.md step 6 / mcp.md).
 echo "[*] verifying tool rack..."
@@ -55,7 +60,7 @@ for b in nxc netexec nmap hashcat secretsdump.py getST.py certipy bloodyAD; do
 done
 if command -v GetUserSPNs.py >/dev/null 2>&1 || command -v impacket-GetUserSPNs >/dev/null 2>&1; then
   echo "    ok  GetUserSPNs"; else echo "    MISSING GetUserSPNs"; miss=1; fi
-if [ -f /opt/gotad/ad-auto.py ]; then echo "    ok  ad-auto.py"; else echo "    MISSING ad-auto.py"; miss=1; fi
+if [ -f /opt/adtk/ad-auto.py ]; then echo "    ok  ad-auto.py"; else echo "    MISSING ad-auto.py"; miss=1; fi
 
 if [ "$miss" -ne 0 ]; then
   echo "[!] Some tools are MISSING. Add them to scripts/bootstrap.sh AND docker/Dockerfile,"
@@ -63,4 +68,4 @@ if [ "$miss" -ne 0 ]; then
 else
   echo "[+] Kali tooled and verified."
 fi
-echo "    python3 /opt/gotad/ad-auto.py --i-am-authorized --dc <DC> --domain <DOM> --cidr <CIDR>"
+echo "    python3 /opt/adtk/ad-auto.py --i-am-authorized --dc <DC> --domain <DOM> --cidr <CIDR>"

@@ -36,7 +36,7 @@ NORTH foothold (AS-REP/spray/Kerberoast) → BloodHound ACL / MSSQL →
 child DA → **raiseChild / extra-SID** to sevenkingdoms EA → ESSOS via
 forest trust, SQL link, or ADCS — not extra-SID if SID filtering is on.
 
-## GOTAD skill mapping
+## ADTK skill mapping
 
 Full 01–16 chain. Prefer:
 

@@ -1,12 +1,12 @@
 {
   "mcpServers": {
-    "gotad-kali": {
+    "adtk-kali": {
       "command": "python3",
       "args": ["/ABSOLUTE/PATH/ad-takeover/mcp/server.py"],
       "env": {
-        "GOTAD_TRANSPORT": "docker",
-        "GOTAD_CONTAINER": "gotad-kali",
-        "GOTAD_COMPOSE": "/ABSOLUTE/PATH/ad-takeover/docker"
+        "ADTK_TRANSPORT": "docker",
+        "ADTK_CONTAINER": "adtk-kali",
+        "ADTK_COMPOSE": "/ABSOLUTE/PATH/ad-takeover/docker"
       }
     }
   }

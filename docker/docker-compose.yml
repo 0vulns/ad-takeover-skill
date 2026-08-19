@@ -1,9 +1,9 @@
-name: gotad
+name: adtk
 services:
   kali:
     image: kalilinux/kali-rolling
-    container_name: gotad-kali
-    hostname: gotad-kali
+    container_name: adtk-kali
+    hostname: adtk-kali
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -11,10 +11,10 @@ services:
     tty: true
     volumes:
       - kali-home:/root
-      - ../loot:/loot
-      - ../scripts:/opt/gotad:ro
-      - ../references:/opt/gotad/references:ro
-      - ../conf:/opt/gotad/conf:ro
+      - ../logs:/logs
+      - ../scripts:/opt/adtk:ro
+      - ../references:/opt/adtk/references:ro
+      - ../conf:/opt/adtk/conf:ro
     networks:
       lab_lan:
         ipv4_address: ${IP_RANGE:-192.168.56}.200

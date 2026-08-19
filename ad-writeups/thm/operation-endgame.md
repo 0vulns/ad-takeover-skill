@@ -61,7 +61,7 @@ Things that cost time on the wire, now carded so the next run doesn't repeat the
 - **VPN path-MTU black-hole.** `tun0` at MTU 1300 dropped every full-MSS TGS-REQ
   (`Connection reset by peer`) while small AS-REQs passed. `getTGT` worked but
   `GetUserSPNs`/`getST` didn't. Fix before any Kerberos: `ip link set dev tun0 mtu 1200`
-  (`/opt/gotad/preflight.sh {{DC}} tun0 1200`), re-apply after reconnect.
+  (`/opt/adtk/preflight.sh {{DC}} tun0 1200`), re-apply after reconnect.
 - **High latency kills RID-brute.** `--rid-brute` died on `NetBIOSTimeout` (~250ms
   RTT); bulk anonymous LDAP pulled all users in a few queries (`enum.md`).
 - **No GPU in the VM.** `hashcat` → `No OpenCL … platform found`; use `john` (CPU).
@@ -78,6 +78,6 @@ Things that cost time on the wire, now carded so the next run doesn't repeat the
 guest/empty-password · BloodHound/rusthound-ce · Kerberoast `-no-pass` · GenericWrite on DC computer
 · RBCD (existing SPN) · S4U getST `ldap/` · WriteDACL→DCSync grant · DCSync · smbclient/atexec (no WinRM)
 
-## GOTAD skill mapping
+## ADTK skill mapping
 
 `unauth` → `bloodhound` → `kerberoast` → `acl` → `rbcd` → `delegation` → `dcsync`

@@ -23,6 +23,6 @@ BloodHound / ACL → **DCSync**.
 
 AS-REP · Autologon / registry · Kerberoast · DCSync
 
-## GOTAD skill mapping
+## ADTK skill mapping
 
 `asrep` → `lateral` → `kerberoast` → `bloodhound` → `dcsync`

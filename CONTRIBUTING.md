@@ -11,7 +11,7 @@ tight and safe.
   or bundled C2/crypters. Everything must be reproducible with public,
   documented tooling.
 - **No secrets in the repo.** Redact flags, cracked passwords, and full hashes
-  in any notes or write-ups. `loot/`, `.env`, ccaches, and hashes are
+  in any notes or write-ups. `logs/`, `.env`, ccaches, and hashes are
   git-ignored — keep it that way.
 - Write-ups are **structured path notes + source links**, not pasted
   third-party blogs.

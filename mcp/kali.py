@@ -11,11 +11,11 @@ from typing import Optional
 
 PACK = Path(__file__).resolve().parent.parent
 DEFAULT_COMPOSE = PACK / "docker"
-DEFAULT_CONTAINER = "gotad-kali"
-REMOTE_ROOT = "/opt/gotad"
-# Docker bind-mounts /loot. A plain SSH Kali VM usually has no /loot — set
-# GOTAD_LOOT (e.g. /home/kali/loot) so loot/state.json land in a real dir.
-REMOTE_LOOT = os.environ.get("GOTAD_LOOT", "/loot").rstrip("/") or "/loot"
+DEFAULT_CONTAINER = "adtk-kali"
+REMOTE_ROOT = "/opt/adtk"
+# Docker bind-mounts /logs. A plain SSH Kali VM usually has no /logs — set
+# ADTK_LOGS (e.g. /home/kali/logs) so logs/state.json land in a real dir.
+REMOTE_LOGS = os.environ.get("ADTK_LOGS", "/logs").rstrip("/") or "/logs"
 MAX_OUT = 80_000
 
 
@@ -111,7 +111,7 @@ class DockerKali(Kali):
         envf = self.compose_dir / ".env"
         if not envf.exists() and (self.compose_dir / ".env.example").exists():
             envf.write_text((self.compose_dir / ".env.example").read_text())
-        (PACK / "loot").mkdir(exist_ok=True)
+        (PACK / "logs").mkdir(exist_ok=True)
         argv = [docker, "compose", "-f", str(compose), "up", "-d"]
         return _run(argv, 180, cwd=self.compose_dir)
 
@@ -134,7 +134,7 @@ class SSHKali(Kali):
         return argv
 
     def status(self) -> dict:
-        r = self.exec("hostname; id; command -v nxc || command -v netexec; ls /opt/gotad 2>/dev/null | head", 20)
+        r = self.exec("hostname; id; command -v nxc || command -v netexec; ls /opt/adtk 2>/dev/null | head", 20)
         return {
             "transport": "ssh",
             "ok": r.ok,
@@ -158,13 +158,31 @@ class SSHKali(Kali):
         return self.exec("true", 10)
 
 
+def _autodetect() -> str:
+    """Pick a transport when ADTK_TRANSPORT is unset.
+
+    Prefer Docker if the client is present and the container is running;
+    otherwise fall back to SSH when ADTK_SSH is configured. Defaults to
+    docker (kali_status will then report it as down).
+    """
+    container = os.environ.get("ADTK_CONTAINER", DEFAULT_CONTAINER)
+    compose = Path(os.environ.get("ADTK_COMPOSE", str(DEFAULT_COMPOSE)))
+    if shutil.which("docker") and DockerKali(container, compose).status().get("ok"):
+        return "docker"
+    if os.environ.get("ADTK_SSH"):
+        return "ssh"
+    return "docker"
+
+
 def from_env() -> Kali:
-    transport = os.environ.get("GOTAD_TRANSPORT", "docker").strip().lower()
+    transport = os.environ.get("ADTK_TRANSPORT", "").strip().lower()
+    if transport not in {"docker", "ssh"}:
+        transport = _autodetect()
     if transport == "ssh":
-        target = os.environ.get("GOTAD_SSH", "root@127.0.0.1")
-        port = int(os.environ.get("GOTAD_SSH_PORT", "22"))
-        ident = os.environ.get("GOTAD_SSH_KEY", "")
+        target = os.environ.get("ADTK_SSH", "root@127.0.0.1")
+        port = int(os.environ.get("ADTK_SSH_PORT", "22"))
+        ident = os.environ.get("ADTK_SSH_KEY", "")
         return SSHKali(target, port, ident)
-    container = os.environ.get("GOTAD_CONTAINER", DEFAULT_CONTAINER)
-    compose = Path(os.environ.get("GOTAD_COMPOSE", str(DEFAULT_COMPOSE)))
+    container = os.environ.get("ADTK_CONTAINER", DEFAULT_CONTAINER)
+    compose = Path(os.environ.get("ADTK_COMPOSE", str(DEFAULT_COMPOSE)))
     return DockerKali(container, compose)

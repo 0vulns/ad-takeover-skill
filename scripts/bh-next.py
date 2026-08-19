@@ -4,8 +4,8 @@
 Lab / RoE. Works with bloodhound-python (legacy) and rusthound-ce / BHCE
 {"data": [...]} dumps.
 
-  python3 bh-next.py /loot/bloodhound/*.zip --owned hodor,jon.snow
-  python3 bh-next.py /loot/bloodhound --state /loot/auto/state.json
+  python3 bh-next.py /logs/bloodhound/*.zip --owned hodor,jon.snow
+  python3 bh-next.py /logs/bloodhound --state /logs/auto/state.json
 """
 from __future__ import annotations
 
@@ -378,7 +378,7 @@ def self_test() -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="BloodHound zip → next edges")
-    ap.add_argument("path", nargs="?", default="/loot/bloodhound")
+    ap.add_argument("path", nargs="?", default="/logs/bloodhound")
     ap.add_argument("--owned", default="", help="comma SAM names")
     ap.add_argument("--state", default="")
     ap.add_argument("--json", action="store_true")
@@ -392,7 +392,7 @@ def main() -> int:
     if args.state:
         names += owned_from_state(Path(args.state))
     if not names:
-        names += owned_from_state(Path("/loot/auto/state.json"))
+        names += owned_from_state(Path("/logs/auto/state.json"))
     src = Path(args.path)
     objects = load_zip(src)
     if not objects:

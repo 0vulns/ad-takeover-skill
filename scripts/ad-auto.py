@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GOTAD authorized-lab AD takeover automator (decision engine).
+"""ADTK authorized-lab AD takeover automator (decision engine).
 
 Lab / RoE only. Public tools. Requires --i-am-authorized.
 
@@ -20,9 +20,33 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
 
-LOOT = Path(os.environ.get("GOTAD_LOOT", "/loot"))
+LOGS_BASE = Path(os.environ.get("ADTK_LOGS", "/logs"))
+# LOOT is the per-target tree logs/<dc-ip>/. It starts at the base and is
+# rebound by set_target() once we know the DC, so each target keeps its own
+# auto/state.json, hashes, bloodhound, etc.
+LOOT = LOGS_BASE
 STATE = LOOT / "auto" / "state.json"
 REPORT = LOOT / "auto" / "report.txt"
+
+
+def _san_target(dc: str) -> str:
+    return re.sub(r"[^0-9A-Za-z._-]", "_", dc.strip()) or "current"
+
+
+def set_target(dc: str) -> None:
+    """Point loot at logs/<dc-ip>/ so runs against different DCs don't mix."""
+    global LOOT, STATE, REPORT
+    LOOT = LOGS_BASE / _san_target(dc)
+    STATE = LOOT / "auto" / "state.json"
+    REPORT = LOOT / "auto" / "report.txt"
+
+
+def latest_target() -> Optional[Path]:
+    """Most recently written logs/<ip>/ tree — used by --resume without --dc."""
+    if not LOGS_BASE.exists():
+        return None
+    cands = sorted(LOGS_BASE.glob("*/auto/state.json"), key=lambda p: p.stat().st_mtime)
+    return cands[-1].parent.parent if cands else None
 
 RE_BANNER = re.compile(
     r"(?P<proto>SMB|LDAP|MSSQL|WINRM|RDP|SSH)\s+"
@@ -309,9 +333,12 @@ def auth_args(st: State) -> list[str]:
 
 
 def goad_wordlist() -> Path:
+    conf = Path(__file__).resolve().parent.parent / "conf"
     for c in (
-        Path("/opt/gotad/conf/wordlist-lab.txt"),
-        Path(__file__).resolve().parent.parent / "conf" / "wordlist-lab.txt",
+        Path("/opt/adtk/conf/wordlist-lab.txt"),
+        Path("/opt/adtk/conf/wordlist-lab.txt.example"),
+        conf / "wordlist-lab.txt",
+        conf / "wordlist-lab.txt.example",
     ):
         if c.exists():
             return c
@@ -1304,7 +1331,7 @@ def why(st: State, action: str) -> str:
 
 def render_report(st: State) -> str:
     lines = [
-        "GOTAD report — authorized lab only",
+        "ADTK report — authorized lab only",
         f"target  {st.domain}  dc={st.dc}  cidr={st.cidr}  profile={st.profile}",
         f"takeover  {st.takeover}",
         "path    " + (" → ".join(st.path) if st.path else "(empty)"),
@@ -1397,7 +1424,7 @@ CA Name : ESSOS-CA
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="GOTAD authorized-lab AD decision engine")
+    ap = argparse.ArgumentParser(description="ADTK authorized-lab AD decision engine")
     ap.add_argument("--i-am-authorized", action="store_true",
                     help="required except for --self-test / --plan with --resume")
     ap.add_argument("--dc", default="", help="DC IP (required unless --resume / --self-test)")
@@ -1412,7 +1439,7 @@ def main() -> int:
     ap.add_argument("--profile", choices=["auto", "goad", "generic"], default="auto")
     ap.add_argument("--from", dest="from_step", default="", help="force this action first")
     ap.add_argument("--only", default="", help="comma list of actions, then stop")
-    ap.add_argument("--resume", action="store_true", help="load /loot/auto/state.json")
+    ap.add_argument("--resume", action="store_true", help="load logs/<dc-ip>/auto/state.json (newest if no --dc)")
     ap.add_argument("--plan", action="store_true", help="print the next action, do not run")
     ap.add_argument("--abuse", action="store_true",
                     help="lab-only: act on first ForceChangePassword / ESC1")
@@ -1430,7 +1457,14 @@ def main() -> int:
         print("[!] need --dc or --resume")
         return 2
 
-    os.environ["GOTAD_LOOT"] = str(LOOT)
+    # Per-target tree: logs/<dc-ip>/. --resume without --dc reuses the newest.
+    if args.dc:
+        set_target(args.dc)
+    elif args.resume:
+        prev = latest_target()
+        if prev is not None:
+            set_target(prev.name)
+    os.environ["ADTK_LOGS"] = str(LOGS_BASE)
     st = State(
         domain=args.domain,
         dc=args.dc,
@@ -1451,7 +1485,7 @@ def main() -> int:
     if args.iface in {"tun0", "tun1"}:
         st.notes.append("VPN iface — poison/relay skipped")
 
-    print("GOTAD decision engine — authorized lab / CTF only")
+    print("ADTK decision engine — authorized lab / CTF only")
     print(f"target dc={st.dc} domain={st.domain or '(discover)'} cidr={st.cidr} profile={st.profile}")
 
     if args.plan:

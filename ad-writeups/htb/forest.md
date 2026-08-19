@@ -28,6 +28,6 @@ chain → **WriteDACL** on domain (via Exchange Windows Permissions) → grant
 
 AS-REP · BloodHound · ACL AddMember/WriteDACL · DCSync · PTH
 
-## GOTAD skill mapping
+## ADTK skill mapping
 
 `asrep` → `bloodhound` → `bh-next` → `acl` → `dcsync`

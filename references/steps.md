@@ -13,7 +13,7 @@ MTU (1300) above the real path MTU (~1230), so full-MSS TGS-REQs are silently
 black-holed (`Connection reset by peer`) even though AS-REQs succeed. Clamp it
 and sync the clock — re-run after any VPN reconnect:
 ```
-/opt/gotad/preflight.sh {{DC}} tun0 1200
+/opt/adtk/preflight.sh {{DC}} tun0 1200
 # manual: ip link set dev tun0 mtu 1200 ; ntpdate -u {{DC}}
 # PMTU probe: ping -M do -s 1400 -c1 {{DC}}  (fails => path MTU below full segment)
 ```

@@ -13,14 +13,14 @@ Do not re-collect every five minutes. Collect, mark owned, query, act, then coll
 ```
 # legacy (Neo4j BloodHound ≤4)
 bloodhound-python -u {{USER}} -p '{{PASS}}' -d {{DOMAIN}} \
-  -dc {{DC_FQDN}} -ns {{NS}} -c All --zip -o /loot/bloodhound
+  -dc {{DC_FQDN}} -ns {{NS}} -c All --zip -o /logs/bloodhound
 
 bloodhound-python -u {{USER}} --hashes :{{HASH}} -d {{DOMAIN}} \
   -dc {{DC_FQDN}} -ns {{NS}} -c All --zip
 
 # BloodHound CE / rusthound-ce (preferred on current labs)
 rusthound-ce -d {{DOMAIN}} -u {{USER}}@{{DOMAIN}} -p '{{PASS}}' \
-  -z -o /loot/bloodhound -f {{DC}}
+  -z -o /logs/bloodhound -f {{DC}}
 bloodhound-ce-python -u {{USER}} -p '{{PASS}}' -d {{DOMAIN}} \
   -dc {{DC_FQDN}} -ns {{NS}} -c All --zip
 ```
@@ -30,8 +30,8 @@ bloodhound-ce-python -u {{USER}} -p '{{PASS}}' -d {{DOMAIN}} \
 ## Next edge (no GUI)
 
 ```
-python3 /opt/gotad/bh-next.py /loot/bloodhound \
-  --owned {{USER}} --state /loot/auto/state.json
+python3 /opt/adtk/bh-next.py /logs/bloodhound \
+  --owned {{USER}} --state /logs/auto/state.json
 ```
 
 That is what `ad-auto.py` runs after collect. Read the first HV edge and

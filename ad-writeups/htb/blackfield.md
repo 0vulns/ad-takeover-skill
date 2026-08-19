@@ -24,6 +24,6 @@ Share / user list → **AS-REP** `support` → ForceChangePassword on audit user
 
 AS-REP · ForceChangePassword · SeBackupPrivilege · offline NTDS · PTH
 
-## GOTAD skill mapping
+## ADTK skill mapping
 
 `asrep` → `bloodhound` / `acl` → `shells` → `dcsync` (offline variant)

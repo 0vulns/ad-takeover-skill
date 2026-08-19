@@ -50,13 +50,13 @@ lessons so the run is the attack path, not an environment fight.
 ```bash
 cd docker && cp .env.example .env      # set IP_RANGE + LAB_PARENT for LAN labs
 ../scripts/up.sh                       # or: ../scripts/up.sh vpn   (HTB/THM tun0)
-docker exec -it gotad-kali bash
+docker exec -it adtk-kali bash
 
-/opt/gotad/bootstrap.sh                # installs the rack, then self-verifies
-/opt/gotad/preflight.sh <DC_IP> tun0 1200   # VPN labs: clamp MTU + sync clock
+/opt/adtk/bootstrap.sh                # installs the rack, then self-verifies
+/opt/adtk/preflight.sh <DC_IP> tun0 1200   # VPN labs: clamp MTU + sync clock
 
-python3 /opt/gotad/ad-auto.py --i-am-authorized --dc 192.168.56.11 --profile goad
-python3 /opt/gotad/ad-auto.py --plan --dc 10.10.11.47 --iface tun0
+python3 /opt/adtk/ad-auto.py --i-am-authorized --dc 192.168.56.11 --profile goad
+python3 /opt/adtk/ad-auto.py --plan --dc 10.10.11.47 --iface tun0
 ```
 
 ## Quick start (SSH to your own Kali)
@@ -64,8 +64,8 @@ python3 /opt/gotad/ad-auto.py --plan --dc 10.10.11.47 --iface tun0
 ```bash
 # get a key login working first:
 ssh -i ~/.ssh/id_ed25519 kali@KALI_IP hostname
-# copy the pack if /opt/gotad is empty, then bootstrap over SSH via MCP or:
-scp -r scripts conf kali@KALI_IP:/opt/gotad/ && ssh kali@KALI_IP /opt/gotad/bootstrap.sh
+# copy the pack if /opt/adtk is empty, then bootstrap over SSH via MCP or:
+scp -r scripts conf kali@KALI_IP:/opt/adtk/ && ssh kali@KALI_IP /opt/adtk/bootstrap.sh
 ```
 
 ## Drive it from an AI agent (MCP)
@@ -74,8 +74,8 @@ The MCP server talks to Kali over Docker or SSH — no extra pip deps.
 
 ```bash
 python3 mcp/server.py --self-test
-GOTAD_TRANSPORT=docker python3 mcp/server.py
-GOTAD_TRANSPORT=ssh GOTAD_SSH=kali@192.168.56.200 python3 mcp/server.py
+ADTK_TRANSPORT=docker python3 mcp/server.py
+ADTK_TRANSPORT=ssh ADTK_SSH=kali@192.168.56.200 python3 mcp/server.py
 ```
 
 Wire it into your host by editing the absolute path in the example configs:
@@ -85,13 +85,19 @@ Wire it into your host by editing the absolute path in the example configs:
 
 | Env | Default | Meaning |
 | --- | --- | --- |
-| `GOTAD_TRANSPORT` | `docker` | `docker` or `ssh` |
-| `GOTAD_CONTAINER` | `gotad-kali` | compose service name |
-| `GOTAD_COMPOSE` | `docker/` | compose dir (for `kali_up`) |
-| `GOTAD_SSH` | `root@127.0.0.1` | `user@host` |
-| `GOTAD_SSH_PORT` | `22` | SSH port |
-| `GOTAD_SSH_KEY` | empty | identity file |
-| `GOTAD_LOOT` | `/loot` | loot dir (SSH VM with no `/loot` bind) |
+| `ADTK_TRANSPORT` | auto | `docker` or `ssh`; unset = auto (Docker if the container is up, else SSH) |
+| `ADTK_CONTAINER` | `adtk-kali` | compose service name |
+| `ADTK_COMPOSE` | `docker/` | compose dir (for `kali_up`) |
+| `ADTK_SSH` | `root@127.0.0.1` | `user@host` |
+| `ADTK_SSH_PORT` | `22` | SSH port |
+| `ADTK_SSH_KEY` | empty | identity file |
+| `ADTK_LOGS` | `/logs` | base log dir; each target gets `logs/<dc-ip>/` under it (set for an SSH VM with no `/logs` bind) |
+
+You usually don't set `ADTK_TRANSPORT` — leave it unset and the server picks
+Docker when the container is running, otherwise SSH if `ADTK_SSH` is set. The
+DC IP you pass to `ad_plan` / `ad_auto` / `kali_preflight` also selects the
+per-target log tree, so `logs_read`, `bh_next`, and background jobs all land in
+`logs/<dc-ip>/`.
 
 ### MCP-first loop (safety model)
 
@@ -101,15 +107,15 @@ Agents preinstall the rack and verify tools **before** any recon — never
 
 ```
 1. Restate lab / RoE.
-2. Transport: GOTAD_TRANSPORT=docker or =ssh
+2. Transport: ADTK_TRANSPORT=docker or =ssh
 3. kali_status
 4. Docker + down → kali_up (vpn on tun0/HTB, else lan)
    VPN → kali_preflight (clamp tun0 mtu 1200 + clock)
 5. kali_bootstrap (once per box; i_am_authorized: true)
 6. Verify: nxc|netexec, nmap, hashcat, GetUserSPNs, secretsdump,
-   getST, certipy, bloodyAD, /opt/gotad/ad-auto.py
+   getST, certipy, bloodyAD, /opt/adtk/ad-auto.py
 7. Only then: ad_plan / ad_auto / kali_exec
-8. loot_read auto/state.json + auto/report.txt
+8. logs_read auto/state.json + auto/report.txt
 9. After a BloodHound collect: bh_next → ONE kali_exec for the printed edge
 ```
 
@@ -118,9 +124,11 @@ Relayer / Responder / mitm6 hang under MCP — run those in an interactive tty.
 ## How it works
 
 `ad-auto.py` is not a linear script; it asks "what is the most useful next
-action given the loot?" and stops when another cycle wouldn't help. State lives
-in `loot/auto/state.json` + `report.txt`. The 01–16 kill chain
-(`references/steps.md`) is the manual checklist behind it:
+action given what we've collected?" and stops when another cycle wouldn't help.
+Each target keeps its own tree at `logs/<dc-ip>/` (state `auto/state.json` +
+`report.txt`, plus `hashes/`, `bloodhound/`, `nmap/`, …), so runs against
+different DCs never mix. The 01–16 kill chain (`references/steps.md`) is the
+manual checklist behind it:
 
 ```
 box → recon → unauth → poison → asrep → spray → kerberoast → bloodhound →
@@ -140,7 +148,7 @@ CONTRIBUTING.md     conventions + safety rules
 LICENSE             MIT + authorized-use notice
 docker/             compose (LAN + VPN), Dockerfile, .env.example
 scripts/            up.sh, bootstrap.sh, preflight.sh, ad-auto.py, bh-next.py, mssql-hop.py
-conf/               hosts, krb5, lab wordlist
+conf/               *.example templates (hosts, krb5, lab wordlist) — copy + edit per lab
 mcp/                stdio MCP server + example configs (Cursor / Claude)
 evals/              skill regression cases (evals.json)
 references/
@@ -153,7 +161,7 @@ references/
   tools/            senior tool cards (nxc, Impacket, Certipy, bloodyAD, LPE, …)
   labs/             goad-topology.md, kill-chain.md
 ad-writeups/        HTB / THM / GOAD path notes + technique map
-loot/               runtime bind-mount target (git-ignored)
+logs/               per-target run artifacts logs/<dc-ip>/ (bind-mount, git-ignored)
 ```
 
 ## Where to start reading

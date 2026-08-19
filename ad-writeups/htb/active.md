@@ -23,6 +23,6 @@ Administrator SPN → crack → PTH / psexec as DA.
 
 GPP / SYSVOL · Kerberoast · PTH / exec
 
-## GOTAD skill mapping
+## ADTK skill mapping
 
 `unauth` / `sysvol` → `kerberoast` → `crack` → `lateral` / `dcsync`

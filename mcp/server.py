@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""GOTAD Kali MCP server (stdio). Lab / RoE only.
+"""ADTK Kali MCP server (stdio). Lab / RoE only.
 
 Drive the attack box from Claude / Cursor / any MCP host.
 
-  GOTAD_TRANSPORT=docker python3 mcp/server.py
-  GOTAD_TRANSPORT=ssh GOTAD_SSH=root@192.168.56.200 python3 mcp/server.py
+  ADTK_TRANSPORT=docker python3 mcp/server.py
+  ADTK_TRANSPORT=ssh ADTK_SSH=root@192.168.56.200 python3 mcp/server.py
 
 Every mutating tool requires i_am_authorized=true.
 """
@@ -12,17 +12,36 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from typing import Any
 
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from kali import REMOTE_LOOT, REMOTE_ROOT, ExecResult, Kali, from_env  # noqa: E402
+from kali import REMOTE_LOGS, REMOTE_ROOT, ExecResult, Kali, from_env  # noqa: E402
 
 PROTOCOL = "2024-11-05"
-NAME = "gotad-kali"
-VERSION = "1.1.0"
+NAME = "adtk-kali"
+VERSION = "1.2.0"
+
+# Per-target log tree: logs/<dc-ip>/. Set once from the DC (ad_plan / ad_auto /
+# kali_preflight) so loot reads/writes and digests land in that target's dir.
+_CURRENT_TARGET = {"dir": REMOTE_LOGS}
+
+
+def _san_target(dc: str) -> str:
+    return re.sub(r"[^0-9A-Za-z._-]", "_", (dc or "").strip())
+
+
+def _set_target(dc: str | None) -> None:
+    t = _san_target(dc or "")
+    if t:
+        _CURRENT_TARGET["dir"] = f"{REMOTE_LOGS}/{t}"
+
+
+def _logdir() -> str:
+    return _CURRENT_TARGET["dir"]
 
 
 def _schema(props: dict, required: list[str] | None = None) -> dict:
@@ -84,10 +103,10 @@ TOOLS: list[dict] = [
     },
     {
         "name": "kali_logs",
-        "description": "Tail a background job logfile under loot (from a kali_exec background run).",
+        "description": "Tail a background job logfile under the current target's logs/<dc>/ tree (from a kali_exec background run).",
         "inputSchema": _schema(
             {
-                "path": {"type": "string", "description": "logfile path (relative to loot or absolute under loot)"},
+                "path": {"type": "string", "description": "logfile path (relative to the target logs dir or absolute under /logs)"},
                 "lines": {"type": "integer", "description": "tail N lines, default 60"},
             },
             ["path"],
@@ -134,7 +153,7 @@ TOOLS: list[dict] = [
         "inputSchema": _schema(
             {
                 "owned": {"type": "string", "description": "comma SAM names"},
-                "path": {"type": "string", "description": "default /loot/bloodhound"},
+                "path": {"type": "string", "description": "default logs/<dc>/bloodhound (current target)"},
             },
             [],
         ),
@@ -154,18 +173,18 @@ TOOLS: list[dict] = [
         ),
     },
     {
-        "name": "loot_ls",
-        "description": "List /loot on Kali.",
-        "inputSchema": _schema({"path": {"type": "string", "description": "subdir under /loot"}}),
+        "name": "logs_ls",
+        "description": "List the current target's log tree logs/<dc>/ on Kali.",
+        "inputSchema": _schema({"path": {"type": "string", "description": "subdir under the target logs dir"}}),
     },
     {
-        "name": "loot_read",
-        "description": "Read a text file from Kali /loot (state.json, report, hashes).",
-        "inputSchema": _schema({"path": {"type": "string", "description": "absolute or relative to /loot"}}, ["path"]),
+        "name": "logs_read",
+        "description": "Read a text file from the target logs/<dc>/ tree (state.json, report, hashes).",
+        "inputSchema": _schema({"path": {"type": "string", "description": "absolute (under /logs) or relative to the target logs dir"}}, ["path"]),
     },
     {
-        "name": "loot_write",
-        "description": "Write a text file under /loot on Kali (users.txt, wordlist).",
+        "name": "logs_write",
+        "description": "Write a text file under the target logs/<dc>/ tree on Kali (users.txt, wordlist).",
         "inputSchema": _schema(
             {"i_am_authorized": AUTH, "path": {"type": "string"}, "content": {"type": "string"}},
             ["i_am_authorized", "path", "content"],
@@ -198,7 +217,7 @@ def _digest(kali: Kali) -> str:
     The host model decides; this just trims raw logs to the signal:
     owned creds, done steps, the printed next edge(s), takeover flag.
     """
-    r = kali.read(f"{REMOTE_LOOT}/auto/state.json", 20)
+    r = kali.read(f"{_logdir()}/auto/state.json", 20)
     if not r.ok:
         return ""
     try:
@@ -253,6 +272,7 @@ def handle(kali: Kali, name: str, args: dict) -> str:
         err = _need_auth(args)
         if err:
             return err
+        _set_target(args.get("dc"))
         parts = [f"bash {REMOTE_ROOT}/preflight.sh"]
         if args.get("dc"):
             parts.append(_q(args["dc"]))
@@ -269,9 +289,9 @@ def handle(kali: Kali, name: str, args: dict) -> str:
         if not cmd:
             return "empty command"
         if args.get("background"):
-            log = f"{REMOTE_LOOT}/auto/bg_{abs(hash(cmd)) % 10**8}.log"
+            log = f"{_logdir()}/auto/bg_{abs(hash(cmd)) % 10**8}.log"
             bg = (
-                f"mkdir -p {REMOTE_LOOT}/auto && "
+                f"mkdir -p {_logdir()}/auto && "
                 f"nohup bash -lc {_q(cmd)} > {log} 2>&1 & echo started pid $! ; echo log {log}"
             )
             return kali.exec(bg, 20).text() + f"\n[poll with kali_logs path={log}]"
@@ -279,9 +299,9 @@ def handle(kali: Kali, name: str, args: dict) -> str:
 
     if name == "kali_logs":
         rel = args["path"]
-        path = rel if rel.startswith("/") else f"{REMOTE_LOOT}/{rel.lstrip('/')}"
-        if not path.startswith(REMOTE_LOOT):
-            return "refused: path must be under loot"
+        path = rel if rel.startswith("/") else f"{_logdir()}/{rel.lstrip('/')}"
+        if not path.startswith(REMOTE_LOGS):
+            return "refused: path must be under logs"
         try:
             n = max(1, min(int(args.get("lines") or 60), 2000))
         except (TypeError, ValueError):
@@ -289,6 +309,7 @@ def handle(kali: Kali, name: str, args: dict) -> str:
         return kali.exec(f"tail -n {n} {_q(path)} 2>/dev/null; echo '---'; pgrep -a -f nohup >/dev/null 2>&1 && echo '(a background job is still running)' || true", 20).text()
 
     if name == "ad_plan":
+        _set_target(args.get("dc"))
         parts = [f"python3 {REMOTE_ROOT}/ad-auto.py --plan"]
         if args.get("resume"):
             parts.append("--resume")
@@ -304,6 +325,7 @@ def handle(kali: Kali, name: str, args: dict) -> str:
         err = _need_auth(args)
         if err:
             return err
+        _set_target(args.get("dc"))
         parts = [f"python3 {REMOTE_ROOT}/ad-auto.py --i-am-authorized", "--dc", _q(args["dc"])]
         for flag, key in (
             ("--domain", "domain"),
@@ -327,11 +349,11 @@ def handle(kali: Kali, name: str, args: dict) -> str:
         return f"{out}\n\n{digest}" if digest else out
 
     if name == "bh_next":
-        path = args.get("path") or f"{REMOTE_LOOT}/bloodhound"
+        path = args.get("path") or f"{_logdir()}/bloodhound"
         cmd = f"python3 {REMOTE_ROOT}/bh-next.py {_q(path)}"
         if args.get("owned"):
             cmd += f" --owned {_q(args['owned'])}"
-        cmd += f" --state {REMOTE_LOOT}/auto/state.json"
+        cmd += f" --state {_logdir()}/auto/state.json"
         return kali.exec(cmd, 60).text()
 
     if name == "mssql_hop":
@@ -347,28 +369,28 @@ def handle(kali: Kali, name: str, args: dict) -> str:
             cmd += f" --domain {_q(args['domain'])}"
         return kali.exec(cmd, 120).text()
 
-    if name == "loot_ls":
+    if name == "logs_ls":
         rel = (args.get("path") or "").lstrip("/")
-        dest = f"{REMOTE_LOOT}/{rel}" if rel else REMOTE_LOOT
+        dest = f"{_logdir()}/{rel}" if rel else _logdir()
         return kali.exec(f"find {dest} -maxdepth 3 -type f 2>/dev/null | head -200", 20).text()
 
-    if name == "loot_read":
+    if name == "logs_read":
         path = args["path"]
         if not path.startswith("/"):
-            path = f"{REMOTE_LOOT}/{path}"
-        if not path.startswith(REMOTE_LOOT):
-            return "refused: path must be under /loot"
+            path = f"{_logdir()}/{path}"
+        if not path.startswith(REMOTE_LOGS):
+            return "refused: path must be under /logs"
         return kali.read(path, 30).text()
 
-    if name == "loot_write":
+    if name == "logs_write":
         err = _need_auth(args)
         if err:
             return err
         path = args["path"]
         if not path.startswith("/"):
-            path = f"{REMOTE_LOOT}/{path}"
-        if not path.startswith(REMOTE_LOOT):
-            return "refused: path must be under /loot"
+            path = f"{_logdir()}/{path}"
+        if not path.startswith(REMOTE_LOGS):
+            return "refused: path must be under /logs"
         return kali.write(path, args["content"].encode(), 30).text()
 
     return f"unknown tool {name}"
@@ -448,7 +470,7 @@ def serve() -> int:
 def self_test() -> int:
     class Fake(Kali):
         def status(self):
-            return {"transport": "docker", "ok": True, "container": "gotad-kali"}
+            return {"transport": "docker", "ok": True, "container": "adtk-kali"}
 
         def exec(self, command, timeout=120):
             return ExecResult(True, 0, "pong " + command[:40], command)

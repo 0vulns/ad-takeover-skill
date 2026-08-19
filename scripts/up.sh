@@ -12,7 +12,7 @@ if [ ! -f .env ]; then
   echo "[*] wrote docker/.env from .env.example — edit LAB_PARENT if needed"
 fi
 
-mkdir -p "$ROOT/loot"
+mkdir -p "$ROOT/logs"
 
 if [ "${1:-}" = "vpn" ]; then
   docker compose -f docker-compose.vpn.yml up -d
@@ -20,7 +20,7 @@ else
   docker compose up -d
 fi
 
-echo "[+] gotad-kali is up"
-echo "    docker exec -it gotad-kali bash"
-echo "    /opt/gotad/bootstrap.sh    # once on the vanilla image"
-echo "    python3 /opt/gotad/ad-auto.py --help"
+echo "[+] adtk-kali is up"
+echo "    docker exec -it adtk-kali bash"
+echo "    /opt/adtk/bootstrap.sh    # once on the vanilla image"
+echo "    python3 /opt/adtk/ad-auto.py --help"
