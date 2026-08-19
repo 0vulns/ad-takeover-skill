@@ -1,0 +1,122 @@
+[
+  {
+    "id": "mcp-first",
+    "prompt": "New HTB/THM DC at 10.10.11.60, MCP (gotad-kali) is available. Take it over.",
+    "expect": [
+      "lab/RoE restated",
+      "kali_status first",
+      "kali_up (vpn) if the box is down / on tun0",
+      "kali_bootstrap with i_am_authorized before any recon",
+      "verify binaries (nxc, GetUserSPNs, secretsdump, getST, certipy, bloodyAD, ad-auto.py)",
+      "only THEN ad_auto / ad_plan / nxc / GetUserSPNs"
+    ],
+    "fail": [
+      "first command is nmap/nxc/ad_auto on a box that was never bootstrapped",
+      "apt/pip install inside the kill chain instead of fixing bootstrap.sh + Dockerfile",
+      "raw docker exec used while MCP tools were available"
+    ]
+  },
+  {
+    "id": "blank-htb",
+    "prompt": "New HTB AD box. DC is 10.10.11.47, domain megabank.htb, I am on tun0 at 10.10.14.8. No creds. Start the takeover from step 1.",
+    "expect": [
+      "lab/RoE restated",
+      "MCP loop: kali_status, kali_up vpn, kali_bootstrap, verify",
+      "docker-compose.vpn.yml or --iface tun0",
+      "skip poison",
+      "ad-auto.py --dc 10.10.11.47",
+      "walk unauth (try guest empty pw) -> asrep -> spray before guessing ACL"
+    ]
+  },
+  {
+    "id": "endgame-guest-rbcd",
+    "prompt": "THM box, DC AD.THM.LOCAL / thm.local. null bind is denied. 5985 is closed. Get the flag.",
+    "expect": [
+      "lab/RoE restated",
+      "guest with empty password (-u guest -p '') as first-class foothold",
+      "BloodHound/rusthound-ce collect as guest, find Kerberoastable CODY_ROY",
+      "GetUserSPNs -no-pass BEFORE any spray/RID-brute",
+      "GenericWrite on DC computer AD$ -> RBCD using existing SPN user (no FAKE$/MAQ needed)",
+      "getST -spn ldap/AD.THM.LOCAL -impersonate Administrator (ldap/ for DCSync)",
+      "grant dcsync then secretsdump",
+      "no WinRM -> smbclient.py / atexec, NOT evil-winrm"
+    ],
+    "fail": [
+      "evil-winrm attempted when 5985 is closed",
+      "spray/RID-brute burned before roasting from guest",
+      "bloodyAD -p '' treated as a dead end instead of Impacket -no-pass path",
+      "getST cifs/ used for the DCSync grant"
+    ]
+  },
+  {
+    "id": "forest-htb",
+    "prompt": "HTB Forest, htb.local. No creds. Walk it to Administrator.",
+    "expect": [
+      "unauth user enum (RID cycle / ldapsearch)",
+      "AS-REP roast svc-alfresco, crack -m 18200",
+      "BloodHound first, then bh-next.py",
+      "Account Operators -> Exchange Windows Permissions AddMember",
+      "WriteDACL on domain -> grant DS-Replication -> DCSync",
+      "secretsdump Administrator, PTH"
+    ]
+  },
+  {
+    "id": "active-htb",
+    "prompt": "HTB Active, active.htb. SMB readable. Get DA.",
+    "expect": [
+      "SYSVOL / Groups.xml GPP cpassword BEFORE Kerberoast",
+      "Get-GPPPassword / gpp-decrypt -> SVC_TGS",
+      "Kerberoast Administrator SPN -> hashcat -m 13100",
+      "psexec/wmiexec as DA"
+    ]
+  },
+  {
+    "id": "blackfield-htb",
+    "prompt": "HTB Blackfield, BLACKFIELD.local. AS-REP support user works. Continue to Administrator.",
+    "expect": [
+      "AS-REP support, crack",
+      "BloodHound ForceChangePassword on a backup-capable user",
+      "changepasswd (lab) then shell",
+      "SeBackupPrivilege -> copy NTDS.dit + SYSTEM offline",
+      "secretsdump -ntds NTDS.dit -system SYSTEM LOCAL, PTH"
+    ]
+  },
+  {
+    "id": "mid-foothold",
+    "prompt": "I have corp.local\\j.smith:Welcome1 and BloodHound is collected. Get me to DA, then EA if there is a parent domain.",
+    "expect": [
+      "bh-next.py --owned j.smith",
+      "one edge only (shadow / RBCD / AddMember / GPO)",
+      "raiseChild or extra-SID only after child DA",
+      "forest trust -> not extra-SID"
+    ]
+  },
+  {
+    "id": "goad-still-works",
+    "prompt": "Load GOAD and walk AS-REP through MSSQL to essos.local.",
+    "expect": [
+      "profile goad",
+      "brandon.stark / hodor / jon.snow public lab defaults",
+      "mssql-hop on CASTELBLACK 192.168.56.22",
+      "EXEC AT BRAAVOS then -d essos.local BloodHound"
+    ]
+  },
+  {
+    "id": "bh-next-shadow",
+    "prompt": "bh-next says hodor GenericWrite on jaime.lannister. What next?",
+    "expect": [
+      "tools/shadow.md",
+      "certipy shadow auto -account jaime.lannister",
+      "not a password reset first"
+    ]
+  },
+  {
+    "id": "trust-filter",
+    "prompt": "I DCSynced NORTH. Trust to essos.local is a forest trust. Extra-SID?",
+    "expect": [
+      "no extra-SID",
+      "SID filtering on",
+      "mssql.md or certipy.md or foreign group"
+    ]
+  }
+]

@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "gotad-kali-docker": {
+      "command": "python3",
+      "args": ["/ABSOLUTE/PATH/ad-takeover/mcp/server.py"],
+      "env": {
+        "GOTAD_TRANSPORT": "docker",
+        "GOTAD_CONTAINER": "gotad-kali",
+        "GOTAD_COMPOSE": "/ABSOLUTE/PATH/ad-takeover/docker"
+      }
+    },
+    "gotad-kali-ssh": {
+      "command": "python3",
+      "args": ["/ABSOLUTE/PATH/ad-takeover/mcp/server.py"],
+      "env": {
+        "GOTAD_TRANSPORT": "ssh",
+        "GOTAD_SSH": "root@192.168.56.200",
+        "GOTAD_SSH_PORT": "22",
+        "GOTAD_SSH_KEY": "/ABSOLUTE/PATH/.ssh/id_ed25519"
+      }
+    }
+  }
+}

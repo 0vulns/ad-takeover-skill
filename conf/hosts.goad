@@ -1,0 +1,5 @@
+192.168.56.10  sevenkingdoms.local kingslanding.sevenkingdoms.local kingslanding dc01
+192.168.56.11  north.sevenkingdoms.local winterfell.north.sevenkingdoms.local winterfell dc02
+192.168.56.12  essos.local meereen.essos.local meereen dc03
+192.168.56.22  castelblack.north.sevenkingdoms.local castelblack srv02
+192.168.56.23  braavos.essos.local braavos srv03

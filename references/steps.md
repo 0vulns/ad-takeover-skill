@@ -1,0 +1,69 @@
+# Steps 01–16 (generic)
+
+Tokens: `{{DC}} {{DOMAIN}} {{DC_FQDN}} {{USER}} {{PASS}} {{HASH}} {{CIDR}} {{NS}} {{IFACE}} {{ATTACK}}`.
+
+`scripts/ad-auto.py` is the automated source of truth. This file is the
+agent checklist — when to skip, what “done” means. Commands: `commands.md`.
+
+## 01 Attack box
+Done: `nxc smb {{DC}}` and `nxc ldap {{DC}}` respond. Clock within 5 minutes.
+Skip macvlan on HTB VPN — you already have `tun0`. Use `docker-compose.vpn.yml`.
+
+## 02 Recon
+Done: host list with roles (DC vs member vs SQL vs HTTP vs CA).
+If only 88/389/445 on one IP, it is a single-DC box. Still run the chain.
+
+## 03 Unauth enum
+Done: `users.txt` or a hard no on null/guest.
+RID cycle (`lookupsid`) often works when LDAP anonymous does not.
+Try `guest` with an **empty password** — null is often denied while guest binds.
+guest is first-class: LDAP + BloodHound + Kerberoast `-no-pass` all work from it.
+
+## 04 Poison + relay
+Skip on most HTB PWN networks (no L2 broadcast). Do it on GOAD / local labs.
+Prefer LDAP/ADCS relay when SMB signing is required.
+The automator **skips** this step (listeners hang).
+
+## 05 AS-REP
+Hash mode 18200. No users → not a failure, continue.
+
+## 06 Spray
+Read lockout first (`--pass-pol`). Cap attempts. kerbrute over Kerberos is quieter.
+
+## 07 Kerberoast
+Mode 13100 (RC4) then 19700/19600 (AES). gMSA is step 13, not this.
+If guest/null binds, roast **here with `-no-pass` before §06 spray** — don't
+burn rounds on RID-brute + AS-REP + spray when guest already yields an SPN hash
+(Operation Endgame: guest → GetUserSPNs `-no-pass` → CODY_ROY).
+
+## 08 BloodHound
+Mandatory once you have any domain user. Re-collect after every domain hop.
+Then `bh-next.py` — do not guess the next ACE.
+
+## 09 Lateral
+Spray the new cred/hash across the CIDR. No local admin → stay in LDAP (10–12).
+
+## 10 ACL + MAQ + shadow + RBCD
+GenericAll / GenericWrite / WriteDACL / WriteOwner / ForceChangePassword /
+AddSelf / AddMember. `bh-next` + bloodyAD `get writable`.
+MAQ default 10 → addcomputer. GenericWrite user → shadow. Computer → RBCD.
+
+## 11 Delegation
+findDelegation. RBCD via a computer you can write. Unconstrained = coerce + extract.
+
+## 12 ADCS
+`certipy find -vulnerable`. ESC1–ESC15. No CA → skip.
+
+## 13 GPO / SYSVOL / LAPS / gMSA
+GPP cpassword, writable GPO → SYSTEM task, ReadLAPSPassword, msDS-ManagedPassword.
+
+## 14 MSSQL
+`mssql-hop.py`. Impersonate, linked servers, xp_cmdshell. Cross-domain hop on GOAD.
+
+## 15 Trusts
+`--trusts`, then `trusthop`: raiseChild / extra-SID only if SID filtering is off.
+Forest trusts → SQL / ADCS / foreign group.
+
+## 16 DCSync + EA
+`secretsdump -just-dc-ntlm` / `krbtgt`. Golden only in the lab. Stop when every
+in-scope domain’s KRBTGT is dumped and you can act in the forest root.

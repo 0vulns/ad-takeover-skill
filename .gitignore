@@ -1,0 +1,28 @@
+# Loot / target artifacts — never commit
+loot/
+ntds*
+secrets
+*.ccache
+*.kirbi
+*.pfx
+
+# Cracked material / wordlists
+hash*.txt
+rockyou*
+
+# BloodHound dumps (keep only tiny tracked fixtures if ever needed)
+*.zip
+
+# Secrets / env
+docker/.env
+.env
+!docker/.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store

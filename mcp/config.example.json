@@ -1,0 +1,14 @@
+{
+  "comment": "Copy values into the environment of the MCP host. Not read by the server directly.",
+  "docker": {
+    "GOTAD_TRANSPORT": "docker",
+    "GOTAD_CONTAINER": "gotad-kali",
+    "GOTAD_COMPOSE": "/absolute/path/to/ad-takeover/docker"
+  },
+  "ssh": {
+    "GOTAD_TRANSPORT": "ssh",
+    "GOTAD_SSH": "root@192.168.56.200",
+    "GOTAD_SSH_PORT": "22",
+    "GOTAD_SSH_KEY": "~/.ssh/id_ed25519"
+  }
+}

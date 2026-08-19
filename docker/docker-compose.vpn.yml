@@ -1,0 +1,23 @@
+# HTB / TryHackMe / any tun0 lab — share the host network, no macvlan.
+name: gotad
+services:
+  kali:
+    image: kalilinux/kali-rolling
+    container_name: gotad-kali
+    hostname: gotad-kali
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    stdin_open: true
+    tty: true
+    volumes:
+      - kali-home:/root
+      - ../loot:/loot
+      - ../scripts:/opt/gotad:ro
+      - ../references:/opt/gotad/references:ro
+      - ../conf:/opt/gotad/conf:ro
+    command: sleep infinity
+
+volumes:
+  kali-home:

@@ -1,0 +1,34 @@
+name: gotad
+services:
+  kali:
+    image: kalilinux/kali-rolling
+    container_name: gotad-kali
+    hostname: gotad-kali
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    stdin_open: true
+    tty: true
+    volumes:
+      - kali-home:/root
+      - ../loot:/loot
+      - ../scripts:/opt/gotad:ro
+      - ../references:/opt/gotad/references:ro
+      - ../conf:/opt/gotad/conf:ro
+    networks:
+      lab_lan:
+        ipv4_address: ${IP_RANGE:-192.168.56}.200
+    command: sleep infinity
+
+networks:
+  lab_lan:
+    driver: macvlan
+    driver_opts:
+      parent: ${LAB_PARENT:-vboxnet0}
+    ipam:
+      config:
+        - subnet: ${IP_RANGE:-192.168.56}.0/24
+          gateway: ${IP_RANGE:-192.168.56}.1
+
+volumes:
+  kali-home:
