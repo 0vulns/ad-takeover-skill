@@ -32,8 +32,8 @@ lessons so the run is the attack path, not an environment fight.
   nmap, krb5, ldap-utils.
 - **`ad-auto.py`** — a decision engine that parses loot, skips dead ends, and
   prints the next action (`--plan` / `--resume` / `--from`).
-- **MCP server** — drive Kali from an AI agent with a safety-gated tool set;
-  mutating tools require `i_am_authorized: true`.
+- **MCP server** — drive Kali from an AI agent with a compact, parsed tool set
+  (status, exec, decision engine, per-target logs).
 - **Senior tool cards** (`references/tools/`) — one card per tool, each with a
   `Fail → next` table and interpolated commands.
 - **Write-up library** (`ad-writeups/`) — structured path notes for classic AD
@@ -111,7 +111,7 @@ Agents preinstall the rack and verify tools **before** any recon — never
 3. kali_status
 4. Docker + down → kali_up (vpn on tun0/HTB, else lan)
    VPN → kali_preflight (clamp tun0 mtu 1200 + clock)
-5. kali_bootstrap (once per box; i_am_authorized: true)
+5. kali_bootstrap (once per box)
 6. Verify: nxc|netexec, nmap, hashcat, GetUserSPNs, secretsdump,
    getST, certipy, bloodyAD, /opt/adtk/ad-auto.py
 7. Only then: ad_plan / ad_auto / kali_exec

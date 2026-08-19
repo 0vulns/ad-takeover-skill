@@ -70,7 +70,7 @@ rack before recon/roast/BloodHound/`ad_auto`. Full detail + fail→next:
 4. Docker + down → kali_up  (mode vpn if tun0 / HTB, else lan)
      SSH: key login already works; copy pack scripts to /opt/adtk if missing
      VPN labs → kali_preflight (clamp tun0 mtu 1200 + clock); re-run after reconnect
-5. kali_bootstrap  (once per box; wait for it; i_am_authorized: true)
+5. kali_bootstrap  (once per box; wait for it)
 6. Verify binaries (same check, Docker or SSH):
      nxc|netexec · nmap · hashcat
      GetUserSPNs.py|impacket-GetUserSPNs · secretsdump · getST · certipy · bloodyAD
@@ -92,7 +92,7 @@ ldap-utils, smbclient, krb5-user. Missing after bootstrap → add it to
 `scripts/bootstrap.sh` **and** `docker/Dockerfile`, not ad-hoc.
 
 Do **not** start Relayer / Responder / mitm6 via MCP — they hang. Interactive
-`docker exec -it` / SSH tty only. Mutating MCP tools require `i_am_authorized: true`.
+`docker exec -it` / SSH tty only.
 
 ## Quick start
 

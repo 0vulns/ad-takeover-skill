@@ -57,7 +57,7 @@ ssh root@HOST 'ls /opt/adtk/bootstrap.sh /opt/adtk/ad-auto.py'
 
 ## Tools
 
-| Tool | Auth | Does |
+| Tool | Mutates | Does |
 | --- | --- | --- |
 | `kali_status` | no | container / ssh alive? |
 | `kali_up` | yes | `compose up -d` (`lan` or `vpn`) |
@@ -76,7 +76,9 @@ ssh root@HOST 'ls /opt/adtk/bootstrap.sh /opt/adtk/ad-auto.py'
 printed next edge) parsed from `auto/state.json` — the model still decides; the
 server just trims raw logs. No LLM runs inside the server.
 
-Mutating tools refuse unless `i_am_authorized: true`.
+Tools run with no per-call authorization gate — point the server at a lab you own
+or have written RoE for. `ad_auto` / `mssql_hop` still pass `--i-am-authorized`
+to the underlying scripts automatically.
 
 ## Agent loop (MCP first, tools second, attacks last)
 
@@ -89,7 +91,7 @@ and verify binaries **before** recon / roast / BloodHound / `ad_auto`.
 4. Docker + down → `kali_up` (`vpn` on tun0 / HTB, else `lan`).
    SSH: key login already works; copy pack scripts to `/opt/adtk` if missing (above).
    VPN labs: `kali_preflight` (clamp tun0 mtu 1200 + clock) — re-run after any reconnect.
-5. `kali_bootstrap` **once per box**. Wait for it. `i_am_authorized: true`.
+5. `kali_bootstrap` **once per box**. Wait for it.
 6. **Verify binaries** — one `kali_exec`, same on Docker and SSH:
 
 ```

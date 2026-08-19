@@ -6,7 +6,7 @@ Drive the attack box from Claude / Cursor / any MCP host.
   ADTK_TRANSPORT=docker python3 mcp/server.py
   ADTK_TRANSPORT=ssh ADTK_SSH=root@192.168.56.200 python3 mcp/server.py
 
-Every mutating tool requires i_am_authorized=true.
+Authorized labs / CTFs / signed RoE only.
 """
 from __future__ import annotations
 
@@ -48,11 +48,6 @@ def _schema(props: dict, required: list[str] | None = None) -> dict:
     return {"type": "object", "properties": props, "required": required or []}
 
 
-AUTH = {
-    "type": "boolean",
-    "description": "Must be true. You own this lab or have written RoE.",
-}
-
 TOOLS: list[dict] = [
     {
         "name": "kali_status",
@@ -64,28 +59,24 @@ TOOLS: list[dict] = [
         "description": "Start the Kali Docker box (lan macvlan or vpn/host). SSH transport only pings.",
         "inputSchema": _schema(
             {
-                "i_am_authorized": AUTH,
                 "mode": {"type": "string", "enum": ["lan", "vpn"], "description": "lan=macvlan GOAD, vpn=host/tun0"},
             },
-            ["i_am_authorized"],
         ),
     },
     {
         "name": "kali_bootstrap",
         "description": "Install the public AD tool rack inside Kali (once).",
-        "inputSchema": _schema({"i_am_authorized": AUTH}, ["i_am_authorized"]),
+        "inputSchema": _schema({}),
     },
     {
         "name": "kali_preflight",
         "description": "VPN preflight before Kerberos: clamp tun0 MTU to 1200, sync clock, verify rack, probe null/guest. Run once per box and after any VPN reconnect.",
         "inputSchema": _schema(
             {
-                "i_am_authorized": AUTH,
                 "dc": {"type": "string", "description": "DC IP (for ntpdate + null/guest probe)"},
                 "iface": {"type": "string", "description": "default tun0"},
                 "mtu": {"type": "integer", "description": "default 1200"},
             },
-            ["i_am_authorized"],
         ),
     },
     {
@@ -93,12 +84,11 @@ TOOLS: list[dict] = [
         "description": "Run a shell command on Kali. Public tools only. Lab / RoE. Set background=true for long scans (nmap) → returns a logfile to read with kali_logs.",
         "inputSchema": _schema(
             {
-                "i_am_authorized": AUTH,
                 "command": {"type": "string", "description": "bash -lc command"},
                 "timeout": {"type": "integer", "description": "seconds, default 120, max 600"},
                 "background": {"type": "boolean", "description": "detach with nohup; poll output via kali_logs"},
             },
-            ["i_am_authorized", "command"],
+            ["command"],
         ),
     },
     {
@@ -117,7 +107,6 @@ TOOLS: list[dict] = [
         "description": "Run scripts/ad-auto.py on Kali (decision engine).",
         "inputSchema": _schema(
             {
-                "i_am_authorized": AUTH,
                 "dc": {"type": "string"},
                 "domain": {"type": "string"},
                 "cidr": {"type": "string"},
@@ -132,7 +121,7 @@ TOOLS: list[dict] = [
                 "abuse": {"type": "boolean", "description": "lab-only ACL/ESC/MAQ writes"},
                 "timeout": {"type": "integer"},
             },
-            ["i_am_authorized", "dc"],
+            ["dc"],
         ),
     },
     {
@@ -163,13 +152,12 @@ TOOLS: list[dict] = [
         "description": "Probe MSSQL impersonation and linked servers on Kali.",
         "inputSchema": _schema(
             {
-                "i_am_authorized": AUTH,
                 "host": {"type": "string"},
                 "user": {"type": "string"},
                 "password": {"type": "string"},
                 "domain": {"type": "string"},
             },
-            ["i_am_authorized", "host", "user", "password"],
+            ["host", "user", "password"],
         ),
     },
     {
@@ -186,17 +174,11 @@ TOOLS: list[dict] = [
         "name": "logs_write",
         "description": "Write a text file under the target logs/<dc>/ tree on Kali (users.txt, wordlist).",
         "inputSchema": _schema(
-            {"i_am_authorized": AUTH, "path": {"type": "string"}, "content": {"type": "string"}},
-            ["i_am_authorized", "path", "content"],
+            {"path": {"type": "string"}, "content": {"type": "string"}},
+            ["path", "content"],
         ),
     },
 ]
-
-
-def _need_auth(args: dict) -> str | None:
-    if args.get("i_am_authorized") is True:
-        return None
-    return "refused: pass i_am_authorized=true (lab / RoE only)"
 
 
 def _timeout(args: dict, default: int = 120) -> int:
@@ -257,21 +239,12 @@ def handle(kali: Kali, name: str, args: dict) -> str:
         return json.dumps(kali.status(), indent=2)
 
     if name == "kali_up":
-        err = _need_auth(args)
-        if err:
-            return err
         return kali.up(args.get("mode") or "lan").text()
 
     if name == "kali_bootstrap":
-        err = _need_auth(args)
-        if err:
-            return err
         return kali.exec(f"bash {REMOTE_ROOT}/bootstrap.sh", 600).text()
 
     if name == "kali_preflight":
-        err = _need_auth(args)
-        if err:
-            return err
         _set_target(args.get("dc"))
         parts = [f"bash {REMOTE_ROOT}/preflight.sh"]
         if args.get("dc"):
@@ -282,9 +255,6 @@ def handle(kali: Kali, name: str, args: dict) -> str:
         return kali.exec(" ".join(parts), 120).text()
 
     if name == "kali_exec":
-        err = _need_auth(args)
-        if err:
-            return err
         cmd = (args.get("command") or "").strip()
         if not cmd:
             return "empty command"
@@ -322,9 +292,6 @@ def handle(kali: Kali, name: str, args: dict) -> str:
         return f"{out}\n\n{digest}" if digest else out
 
     if name == "ad_auto":
-        err = _need_auth(args)
-        if err:
-            return err
         _set_target(args.get("dc"))
         parts = [f"python3 {REMOTE_ROOT}/ad-auto.py --i-am-authorized", "--dc", _q(args["dc"])]
         for flag, key in (
@@ -357,9 +324,6 @@ def handle(kali: Kali, name: str, args: dict) -> str:
         return kali.exec(cmd, 60).text()
 
     if name == "mssql_hop":
-        err = _need_auth(args)
-        if err:
-            return err
         cmd = (
             f"python3 {REMOTE_ROOT}/mssql-hop.py --i-am-authorized "
             f"--host {_q(args['host'])} --user {_q(args['user'])} "
@@ -383,9 +347,6 @@ def handle(kali: Kali, name: str, args: dict) -> str:
         return kali.read(path, 30).text()
 
     if name == "logs_write":
-        err = _need_auth(args)
-        if err:
-            return err
         path = args["path"]
         if not path.startswith("/"):
             path = f"{_logdir()}/{path}"
@@ -422,7 +383,7 @@ def dispatch(kali: Kali, msg: dict) -> dict | None:
                 "instructions": (
                     "Authorized-lab AD takeover against Kali (Docker or SSH). "
                     "Restate lab/RoE. Call kali_status, then kali_up / kali_bootstrap if needed, "
-                    "then ad_auto or kali_exec. Mutating tools need i_am_authorized=true."
+                    "then ad_auto or kali_exec. Authorized labs / CTFs / signed RoE only."
                 ),
             },
         )
@@ -490,18 +451,15 @@ def self_test() -> int:
     listed = dispatch(k, {"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
     names = {t["name"] for t in listed["result"]["tools"]}
     assert "kali_exec" in names and "ad_auto" in names
-    denied = dispatch(
-        k,
-        {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "kali_exec", "arguments": {"command": "id"}}},
-    )
-    assert denied["result"]["isError"]
+    # no i_am_authorized gate any more: kali_exec runs directly
+    assert all("i_am_authorized" not in (t["inputSchema"].get("properties") or {}) for t in listed["result"]["tools"])
     ok = dispatch(
         k,
         {
             "jsonrpc": "2.0",
-            "id": 4,
+            "id": 3,
             "method": "tools/call",
-            "params": {"name": "kali_exec", "arguments": {"i_am_authorized": True, "command": "id"}},
+            "params": {"name": "kali_exec", "arguments": {"command": "id"}},
         },
     )
     assert not ok["result"]["isError"]

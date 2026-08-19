@@ -41,3 +41,8 @@ Authorized-lab AD takeover skill. No website. Lab / RoE only.
     the container is up, else SSH) and tracks the current target from the DC IP, so
     `logs_ls`/`logs_read`/`logs_write` (renamed from `loot_*`), `bh_next`, digests, and
     background logs all resolve under `logs/<dc-ip>/`.
+13. **Dropped the MCP `i_am_authorized` gate** — tools run without a per-call
+    authorization flag (point the server at a lab you own / have RoE for). The
+    underlying `ad-auto.py` / `mssql-hop.py` still receive `--i-am-authorized`
+    automatically. Docs + self-test updated; the mcp.md tool table now marks which
+    tools mutate rather than which need auth.

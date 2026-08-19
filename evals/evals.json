@@ -6,7 +6,7 @@
       "lab/RoE restated",
       "kali_status first",
       "kali_up (vpn) if the box is down / on tun0",
-      "kali_bootstrap with i_am_authorized before any recon",
+      "kali_bootstrap before any recon",
       "verify binaries (nxc, GetUserSPNs, secretsdump, getST, certipy, bloodyAD, ad-auto.py)",
       "only THEN ad_auto / ad_plan / nxc / GetUserSPNs"
     ],
