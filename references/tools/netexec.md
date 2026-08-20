@@ -55,10 +55,13 @@ nxc mssql|winrm|rdp {{CIDR}} -u {{USER}} -p '{{PASS}}'
 | `STATUS_LOGON_FAILURE` everywhere | not a cred, or local-auth vs domain |
 | `STATUS_ACCOUNT_LOCKED_OUT` | stop spray. wait. kerbrute next time |
 | `KDC_ERR_PREAUTH_FAILED` | bad pass, not “Kerberos broken” |
-| `KRB_AP_ERR_SKEW` | `ntpdate -u {{DC}}` |
+| `KRB_AP_ERR_SKEW` | `ntpdate -u {{DC}}` or `ntpsec-ntpdate -u {{DC}}` |
 | Kerberos/`--kerberoasting` RST on VPN, SMB fine | tun0 path-MTU black-hole — `ip link set dev tun0 mtu 1200` (`/opt/adtk/preflight.sh`) |
 | `NetBIOSTimeout` on `--rid-brute` over a slow/VPN link | too chatty for ~250ms RTT — pivot to bulk anonymous LDAP (`enum.md`) |
 | LDAP bind fails, SMB works | keep SMB; try `-k` or guest |
+| `--add-member` / `unrecognized arguments` | flag removed — `bloodyAD add groupMember "GROUP" USER` |
+| `[REMOVED] Use --groups` / `group-mem` gone | `nxc ldap {{DC}} -u {{USER}} -p '{{PASS}}' --groups "DOMAIN ADMINS"` |
+| `--timeroasting` unrecognized | nxc dropped it — skip, or roast via Impacket |
 | module missing | `nxc smb --list-modules` then Impacket |
 
 ## Chain

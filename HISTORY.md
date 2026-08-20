@@ -46,3 +46,17 @@ Authorized-lab AD takeover skill. No website. Lab / RoE only.
     underlying `ad-auto.py` / `mssql-hop.py` still receive `--i-am-authorized`
     automatically. Docs + self-test updated; the mcp.md tool table now marks which
     tools mutate rather than which need auth.
+14. **Refinement #2 (GOAD-on-Ludus live run)** — SSH Kali over OpenVPN, ~2h35m
+    to DA/EA + krbtgt ×3. Turned every failure into a pack fix: current Kali
+    package names (`freerdp-x11` / `ntpsec-ntpdate`); no `kali-linux-headless`
+    on SSH boxes (it restarts networking); Impacket `impacket-*` aliases in
+    verify; `ADTK_LOGS=~/logs` fallback + MCP export; MCP host ~30s cap →
+    `ad_auto` / `kali_bootstrap` always detach, `kali_exec` auto-detaches
+    nmap/bloodhound/secretsdump and mkdir's `-oN` parents; empty BH zips fall
+    back to loose JSON; nxc `--add-member` / `group-mem` / `--timeroasting`
+    gone → bloodyAD / `--groups` / skip; DCSync `NOT_UNIQUE` → NetBIOS
+    `SEVENKINGDOMS/krbtgt`; quoted-heredoc for `$`/`!` passwords; impacket 0.14
+    dropped `-windows-auth`; WinRM + GUI-subsystem session-0 Fail→next;
+    `ADTK_SUDO_PASS` for stock Kali; VMware Fusion recovery (stale `*.vmx.lck`,
+    never `vmrun start` under a short timeout). New `ad-writeups/goad/goad-ludus.md`.
+    Trail: `.refinements/2.md`.

@@ -23,7 +23,7 @@ from kali import REMOTE_LOGS, REMOTE_ROOT, ExecResult, Kali, from_env  # noqa: E
 
 PROTOCOL = "2024-11-05"
 NAME = "adtk-kali"
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 
 # Per-target log tree: logs/<dc-ip>/. Set once from the DC (ad_plan / ad_auto /
 # kali_preflight) so loot reads/writes and digests land in that target's dir.
@@ -65,7 +65,7 @@ TOOLS: list[dict] = [
     },
     {
         "name": "kali_bootstrap",
-        "description": "Install the public AD tool rack inside Kali (once).",
+        "description": "Install the public AD tool rack inside Kali (once). Always detaches — poll the returned logfile with kali_logs (apt can take many minutes).",
         "inputSchema": _schema({}),
     },
     {
@@ -81,12 +81,12 @@ TOOLS: list[dict] = [
     },
     {
         "name": "kali_exec",
-        "description": "Run a shell command on Kali. Public tools only. Lab / RoE. Set background=true for long scans (nmap) → returns a logfile to read with kali_logs.",
+        "description": "Run a shell command on Kali. Public tools only. Lab / RoE. Long jobs (nmap, bloodhound, secretsdump, hashcat, john, apt, bootstrap) auto-detach even without background=true — poll with kali_logs. Host MCP timeouts (~30s) cannot wait out a scan.",
         "inputSchema": _schema(
             {
                 "command": {"type": "string", "description": "bash -lc command"},
-                "timeout": {"type": "integer", "description": "seconds, default 120, max 600"},
-                "background": {"type": "boolean", "description": "detach with nohup; poll output via kali_logs"},
+                "timeout": {"type": "integer", "description": "seconds for SHORT jobs, default 120, max 600. Ignored when detached."},
+                "background": {"type": "boolean", "description": "force detach (true) or force foreground (false). Omit to auto-detach long jobs."},
             },
             ["command"],
         ),
@@ -96,7 +96,7 @@ TOOLS: list[dict] = [
         "description": "Tail a background job logfile under the current target's logs/<dc>/ tree (from a kali_exec background run).",
         "inputSchema": _schema(
             {
-                "path": {"type": "string", "description": "logfile path (relative to the target logs dir or absolute under /logs)"},
+                "path": {"type": "string", "description": "logfile path (relative to the target logs dir or absolute under ADTK_LOGS)"},
                 "lines": {"type": "integer", "description": "tail N lines, default 60"},
             },
             ["path"],
@@ -104,7 +104,7 @@ TOOLS: list[dict] = [
     },
     {
         "name": "ad_auto",
-        "description": "Run scripts/ad-auto.py on Kali (decision engine).",
+        "description": "Run scripts/ad-auto.py on Kali (decision engine). Always detaches — poll the returned logfile, then logs_read auto/state.json. Host MCP timeouts (~30s) cannot wait out a full run.",
         "inputSchema": _schema(
             {
                 "dc": {"type": "string"},
@@ -193,6 +193,56 @@ def _q(s: str) -> str:
     return "'" + s.replace("'", "'\"'\"'") + "'"
 
 
+LONG_HINT = re.compile(
+    r"\b(nmap|bloodhound|rusthound|secretsdump|hashcat|\bjohn\b|GetUserSPNs|"
+    r"bootstrap|apt-get|\bapt\b|certipy find|ad-auto)\b",
+    re.I,
+)
+
+
+def _remote_env() -> str:
+    parts = [f"export ADTK_LOGS={_q(REMOTE_LOGS)}"]
+    sudo = os.environ.get("ADTK_SUDO_PASS") or os.environ.get("KALI_SUDO_PASS")
+    if sudo:
+        parts.append(f"export ADTK_SUDO_PASS={_q(sudo)}")
+        parts.append(f"export KALI_SUDO_PASS={_q(sudo)}")
+    return "; ".join(parts) + "; "
+
+
+def _mkdir_prelude(cmd: str) -> str:
+    """nmap/bloodhound abort silently when -oN/-o lands in a missing dir."""
+    dirs = [
+        REMOTE_LOGS,
+        f"{_logdir()}/auto",
+        f"{_logdir()}/nmap",
+        f"{_logdir()}/hashes",
+        f"{_logdir()}/bloodhound",
+        f"{_logdir()}/tickets",
+        f"{_logdir()}/adcs",
+        f"{_logdir()}/enum",
+    ]
+    bits = ["mkdir -p " + " ".join(_q(d) for d in dirs)]
+    for m in re.finditer(r"(?:-o[ANX]|-oN|-oA|-oX|-o)\s+(\S+)", cmd):
+        p = m.group(1).strip("\"'")
+        if p.startswith("/"):
+            bits.append(f"mkdir -p $(dirname {_q(p)})")
+    for m in re.finditer(r"(?:--outputfile|-outputfile|-oA)\s+(\S+)", cmd):
+        p = m.group(1).strip("\"'")
+        if p.startswith("/"):
+            bits.append(f"mkdir -p $(dirname {_q(p)})")
+    return " && ".join(bits)
+
+
+def _background(kali: Kali, cmd: str) -> str:
+    log = f"{_logdir()}/auto/bg_{abs(hash(cmd)) % 10**8}.log"
+    wrapped = _remote_env() + cmd
+    bg = (
+        f"{_mkdir_prelude(cmd)} && "
+        f"nohup bash -lc {_q(wrapped)} > {log} 2>&1 & echo started pid $! ; echo log {log}"
+    )
+    return kali.exec(bg, 20).text() + f"\n[poll with kali_logs path={log}]"
+
+
 def _digest(kali: Kali) -> str:
     """Compact, parsed summary of ad-auto state — what happened + next edge.
 
@@ -242,7 +292,7 @@ def handle(kali: Kali, name: str, args: dict) -> str:
         return kali.up(args.get("mode") or "lan").text()
 
     if name == "kali_bootstrap":
-        return kali.exec(f"bash {REMOTE_ROOT}/bootstrap.sh", 600).text()
+        return _background(kali, f"bash {REMOTE_ROOT}/bootstrap.sh")
 
     if name == "kali_preflight":
         _set_target(args.get("dc"))
@@ -252,26 +302,23 @@ def handle(kali: Kali, name: str, args: dict) -> str:
             parts.append(_q(str(args.get("iface") or "tun0")))
             if args.get("mtu"):
                 parts.append(str(int(args["mtu"])))
-        return kali.exec(" ".join(parts), 120).text()
+        return kali.exec(_remote_env() + " ".join(parts), 120).text()
 
     if name == "kali_exec":
         cmd = (args.get("command") or "").strip()
         if not cmd:
             return "empty command"
-        if args.get("background"):
-            log = f"{_logdir()}/auto/bg_{abs(hash(cmd)) % 10**8}.log"
-            bg = (
-                f"mkdir -p {_logdir()}/auto && "
-                f"nohup bash -lc {_q(cmd)} > {log} 2>&1 & echo started pid $! ; echo log {log}"
-            )
-            return kali.exec(bg, 20).text() + f"\n[poll with kali_logs path={log}]"
-        return kali.exec(cmd, _timeout(args)).text()
+        force = args.get("background")
+        detach = bool(force) if force is not None else bool(LONG_HINT.search(cmd))
+        if detach:
+            return _background(kali, cmd)
+        return kali.exec(_remote_env() + cmd, _timeout(args)).text()
 
     if name == "kali_logs":
         rel = args["path"]
         path = rel if rel.startswith("/") else f"{_logdir()}/{rel.lstrip('/')}"
         if not path.startswith(REMOTE_LOGS):
-            return "refused: path must be under logs"
+            return f"refused: path must be under {REMOTE_LOGS}"
         try:
             n = max(1, min(int(args.get("lines") or 60), 2000))
         except (TypeError, ValueError):
@@ -287,7 +334,7 @@ def handle(kali: Kali, name: str, args: dict) -> str:
             parts += ["--dc", _q(args["dc"])]
         if args.get("domain"):
             parts += ["--domain", _q(args["domain"])]
-        out = kali.exec(" ".join(parts), 30).text()
+        out = kali.exec(_remote_env() + " ".join(parts), 30).text()
         digest = _digest(kali)
         return f"{out}\n\n{digest}" if digest else out
 
@@ -311,13 +358,12 @@ def handle(kali: Kali, name: str, args: dict) -> str:
             parts.append("--resume")
         if args.get("abuse"):
             parts.append("--abuse")
-        out = kali.exec(" ".join(parts), _timeout(args, 300)).text()
-        digest = _digest(kali)
-        return f"{out}\n\n{digest}" if digest else out
+        cmd = _remote_env() + " ".join(parts)
+        return _background(kali, cmd) + "\n[when the log stops growing: logs_read auto/state.json]"
 
     if name == "bh_next":
         path = args.get("path") or f"{_logdir()}/bloodhound"
-        cmd = f"python3 {REMOTE_ROOT}/bh-next.py {_q(path)}"
+        cmd = _remote_env() + f"python3 {REMOTE_ROOT}/bh-next.py {_q(path)}"
         if args.get("owned"):
             cmd += f" --owned {_q(args['owned'])}"
         cmd += f" --state {_logdir()}/auto/state.json"
@@ -325,7 +371,7 @@ def handle(kali: Kali, name: str, args: dict) -> str:
 
     if name == "mssql_hop":
         cmd = (
-            f"python3 {REMOTE_ROOT}/mssql-hop.py --i-am-authorized "
+            f"{_remote_env()}python3 {REMOTE_ROOT}/mssql-hop.py --i-am-authorized "
             f"--host {_q(args['host'])} --user {_q(args['user'])} "
             f"--password {_q(args['password'])}"
         )
@@ -343,7 +389,7 @@ def handle(kali: Kali, name: str, args: dict) -> str:
         if not path.startswith("/"):
             path = f"{_logdir()}/{path}"
         if not path.startswith(REMOTE_LOGS):
-            return "refused: path must be under /logs"
+            return f"refused: path must be under {REMOTE_LOGS}"
         return kali.read(path, 30).text()
 
     if name == "logs_write":
@@ -351,7 +397,7 @@ def handle(kali: Kali, name: str, args: dict) -> str:
         if not path.startswith("/"):
             path = f"{_logdir()}/{path}"
         if not path.startswith(REMOTE_LOGS):
-            return "refused: path must be under /logs"
+            return f"refused: path must be under {REMOTE_LOGS}"
         return kali.write(path, args["content"].encode(), 30).text()
 
     return f"unknown tool {name}"
@@ -383,7 +429,9 @@ def dispatch(kali: Kali, msg: dict) -> dict | None:
                 "instructions": (
                     "Authorized-lab AD takeover against Kali (Docker or SSH). "
                     "Restate lab/RoE. Call kali_status, then kali_up / kali_bootstrap if needed, "
-                    "then ad_auto or kali_exec. Authorized labs / CTFs / signed RoE only."
+                    "then ad_auto or kali_exec. Long jobs (ad_auto, nmap, bootstrap) detach and "
+                    "return a logfile — poll with kali_logs; do not wait on the tool call. "
+                    "Authorized labs / CTFs / signed RoE only."
                 ),
             },
         )
@@ -464,6 +512,37 @@ def self_test() -> int:
     )
     assert not ok["result"]["isError"]
     assert "pong" in ok["result"]["content"][0]["text"]
+    bg = dispatch(
+        k,
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "tools/call",
+            "params": {"name": "kali_exec", "arguments": {"command": "nmap -Pn 127.0.0.1"}},
+        },
+    )
+    assert "poll with kali_logs" in bg["result"]["content"][0]["text"]
+    assert "mkdir -p" in bg["result"]["content"][0]["text"]
+    boot = dispatch(
+        k,
+        {
+            "jsonrpc": "2.0",
+            "id": 5,
+            "method": "tools/call",
+            "params": {"name": "kali_bootstrap", "arguments": {}},
+        },
+    )
+    assert "poll with kali_logs" in boot["result"]["content"][0]["text"]
+    auto = dispatch(
+        k,
+        {
+            "jsonrpc": "2.0",
+            "id": 6,
+            "method": "tools/call",
+            "params": {"name": "ad_auto", "arguments": {"dc": "192.168.56.10"}},
+        },
+    )
+    assert "poll with kali_logs" in auto["result"]["content"][0]["text"]
     print("[self-test] mcp ok", sorted(names))
     return 0
 

@@ -58,6 +58,7 @@ Linked login is often a **different domain**. That is the forest hop.
 | login failed | try hash / Kerberos / local SQL auth (`-d ''`) |
 | no impersonate, not sa | `CREATE ASSEMBLY` is rare in labs — leave |
 | link exists, EXEC AT denied | impersonate first, then hop |
+| `EXEC (…) AT [LINK]` times out / Named Pipes 53, ping works | stale `data_source` (GOAD-on-Ludus CASTELBLACK→BRAAVOS). Own both engines directly — do not wait on the hop |
 | xp_cmdshell blocked by policy | OLE `sp_OACreate` or just steal the link cred via `sys.linked_logins` |
 | shell is `NETWORK SERVICE` | local PrivEsc or back to LDAP as the SQL domain account |
 
@@ -65,3 +66,5 @@ Linked login is often a **different domain**. That is the forest hop.
 
 jon.snow on CASTELBLACK → impersonate / link BRAAVOS → essos.local user →
 BloodHound `-d essos.local` → ADCS / LAPS. Do not DCSync NORTH and call it done.
+Ludus/WS2022 builds: the BRAAVOS link is often stale — `khal.drogo` is already
+admin on `.23`; own it directly (`ad-writeups/goad/goad-ludus.md`).

@@ -8,6 +8,9 @@ FROM kalilinux/kali-rolling
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ADTK_LOGS=/logs
+# Fat image only. Never set this on an SSH Kali — kali-linux-headless restarts
+# networking mid-apt and can hang the box (see .refinements/2.md).
+ENV ADTK_FULL_METAPACKAGE=1
 
 COPY scripts/ /opt/adtk/
 COPY conf/ /opt/adtk/conf/

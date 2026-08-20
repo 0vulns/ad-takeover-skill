@@ -44,6 +44,7 @@ Does the 01–16 kill chain + tool cards actually cover each authorized lab in
 | Challenge | One-line path | Skill steps / cards | Verdict | Patch file |
 | --- | --- | --- | --- | --- |
 | GOAD (note) | AS-REP → spray → Kerberoast → ACL ladder → ADCS → MSSQL links → trusts | full 01–16, profile `goad` | (a) reference lab | labs/kill-chain.md |
+| GOAD-on-Ludus (WS2022) | stock ansible 21/23; lord.varys GenericAll → DA/EA; daenerys pre-seeded essos DA; CASTELBLACK→BRAAVOS link stale — own both MSSQL directly | `spray` → `bloodhound` → `acl` → `dcsync` → `mssql` (direct) | (b) agent waits on the SQL hop | goad/goad-ludus.md |
 | GOAD-Light / Mini | same primitives, fewer hosts | full 01–16 | (a) | — |
 
 ## TryHackMe

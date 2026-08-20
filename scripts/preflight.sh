@@ -21,10 +21,10 @@ run_priv() {
   if [ "$(id -u)" = "0" ]; then
     "$@"
   elif sudo -n true 2>/dev/null; then
-    sudo "$@"
+    sudo -p '' "$@"
   else
     # KALI_SUDO_PASS lets MCP/non-interactive callers pipe the password in.
-    echo "${KALI_SUDO_PASS:-kali}" | sudo -S "$@" 2>/dev/null
+    echo "${ADTK_SUDO_PASS:-${KALI_SUDO_PASS:-kali}}" | sudo -S -p '' "$@" 2>/dev/null
   fi
 }
 
@@ -43,11 +43,14 @@ fi
 
 # 2. Clock sync (Kerberos) ------------------------------------------------
 if [ -n "$DC" ]; then
-  if command -v ntpdate >/dev/null 2>&1; then
-    run_priv ntpdate -u "$DC" >/dev/null 2>&1 && echo "  clock: ntpdate $DC ok" \
-      || echo "  clock: ntpdate $DC failed (try 'rdate' / check skew manually)"
+  ntp_bin=""
+  command -v ntpdate >/dev/null 2>&1 && ntp_bin=ntpdate
+  command -v ntpsec-ntpdate >/dev/null 2>&1 && ntp_bin=ntpsec-ntpdate
+  if [ -n "$ntp_bin" ]; then
+    run_priv "$ntp_bin" -u "$DC" >/dev/null 2>&1 && echo "  clock: $ntp_bin $DC ok" \
+      || echo "  clock: $ntp_bin $DC failed (try 'rdate' / check skew manually)"
   else
-    echo "  clock: ntpdate missing — bootstrap installs it"
+    echo "  clock: ntpdate/ntpsec-ntpdate missing — bootstrap installs it"
   fi
   # Optional PMTU sanity: DF-set ping ladder (1200 payload passes, 1400 fails
   # means the path MTU is below full-MSS — the 1200 clamp above handles it).
@@ -63,11 +66,19 @@ fi
 # 3. Rack verify (same list as bootstrap step 6) --------------------------
 echo "  rack:"
 miss=0
-for b in nxc netexec nmap john secretsdump.py getST.py getTGT.py rbcd.py dacledit.py certipy bloodyAD; do
-  command -v "$b" >/dev/null 2>&1 && echo "    ok  $b" || { echo "    MISSING $b"; miss=1; }
-done
-command -v GetUserSPNs.py >/dev/null 2>&1 || command -v impacket-GetUserSPNs >/dev/null 2>&1 \
-  && echo "    ok  GetUserSPNs" || { echo "    MISSING GetUserSPNs"; miss=1; }
+have() { local b; for b in "$@"; do command -v "$b" >/dev/null 2>&1 && return 0; done; return 1; }
+check() { local label="$1"; shift; have "$@" && echo "    ok  $label" || { echo "    MISSING $label"; miss=1; }; }
+check nxc nxc netexec
+check nmap nmap
+check john john
+check certipy certipy certipy-ad
+check bloodyAD bloodyAD
+check secretsdump secretsdump.py impacket-secretsdump
+check getST getST.py impacket-getST
+check getTGT getTGT.py impacket-getTGT
+check rbcd rbcd.py impacket-rbcd
+check dacledit dacledit.py impacket-dacledit
+check GetUserSPNs GetUserSPNs.py impacket-GetUserSPNs
 [ "$miss" -eq 0 ] || echo "  -> MISSING tools: fix scripts/bootstrap.sh + docker/Dockerfile, re-bootstrap. No ad-hoc apt/pip."
 
 # 4. Null / guest probe ---------------------------------------------------

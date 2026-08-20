@@ -29,6 +29,7 @@ notes derived from publicly documented CTF/lab material.
 - Official: https://github.com/Orange-Cyberdefense/GOAD
 - Docs: https://orange-cyberdefense.github.io/GOAD/
 - Vulnerability catalog: https://github.com/dreadnode/DreadGOAD/blob/main/docs/GOAD-vulnerabilities-comprehensive.md
+- Ludus/WS2022 variant path notes: `ad-writeups/goad/goad-ludus.md` (same topology, stock ansible 21/23, stale CASTELBLACK→BRAAVOS link)
 - Mayfly scenarios: https://mayfly277.github.io/categories/ad/
 - Forest takeover example: https://www.subnetzero.net/2026/01/goad-compromise-part-3-total-forest-takeover/
 - German walkthrough: https://www.alexdrsl.de/posts/goad-walkthrough/

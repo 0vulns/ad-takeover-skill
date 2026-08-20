@@ -70,20 +70,22 @@ rack before recon/roast/BloodHound/`ad_auto`. Full detail + fail→next:
 4. Docker + down → kali_up  (mode vpn if tun0 / HTB, else lan)
      SSH: key login already works; copy pack scripts to /opt/adtk if missing
      VPN labs → kali_preflight (clamp tun0 mtu 1200 + clock); re-run after reconnect
-5. kali_bootstrap  (once per box; wait for it)
+5. kali_bootstrap  (once per box; it detaches — poll kali_logs, do not wait on the tool call)
 6. Verify binaries (same check, Docker or SSH):
-     nxc|netexec · nmap · hashcat
-     GetUserSPNs.py|impacket-GetUserSPNs · secretsdump · getST · certipy · bloodyAD
-     /opt/adtk/ad-auto.py
+     nxc|netexec · nmap · hashcat · certipy · bloodyAD
+     GetUserSPNs.py|impacket-GetUserSPNs · secretsdump.py|impacket-secretsdump
+     getST.py|impacket-getST · /opt/adtk/ad-auto.py
 7. Only now: ad_plan / ad_auto / kali_exec for the current step
      (the --dc you pass selects the per-target tree logs/<dc-ip>/)
+     ad_auto and nmap/bloodhound/secretsdump auto-detach — poll kali_logs
 8. logs_read auto/state.json and auto/report.txt
 9. After a BloodHound collect: bh_next, then ONE kali_exec for the printed edge
 ```
 
 Transport env: `ADTK_TRANSPORT` (unset = auto) · `ADTK_CONTAINER` ·
 `ADTK_COMPOSE` · `ADTK_SSH` · `ADTK_SSH_PORT` · `ADTK_SSH_KEY` ·
-`ADTK_LOGS` (base log dir; per-target under `logs/<dc-ip>/`).
+`ADTK_LOGS` (base log dir; per-target under `logs/<dc-ip>/`; SSH boxes use
+`/home/kali/logs`) · `ADTK_SUDO_PASS` (stock Kali has no NOPASSWD).
 
 `kali_bootstrap` = `/opt/adtk/bootstrap.sh`. Rack: nxc/netexec, Impacket
 (GetUserSPNs, secretsdump, getST, smbclient.py, atexec, wmiexec), Certipy,

@@ -91,7 +91,8 @@ Wire it into your host by editing the absolute path in the example configs:
 | `ADTK_SSH` | `root@127.0.0.1` | `user@host` |
 | `ADTK_SSH_PORT` | `22` | SSH port |
 | `ADTK_SSH_KEY` | empty | identity file |
-| `ADTK_LOGS` | `/logs` | base log dir; each target gets `logs/<dc-ip>/` under it (set for an SSH VM with no `/logs` bind) |
+| `ADTK_LOGS` | `/logs` | base log dir; each target gets `logs/<dc-ip>/` under it (set `/home/kali/logs` on an SSH VM with no `/logs` bind). MCP exports this into every remote command. |
+| `ADTK_SUDO_PASS` | `kali` | SSH Kali without NOPASSWD — `preflight.sh` pipes it to `sudo -S` |
 
 You usually don't set `ADTK_TRANSPORT` — leave it unset and the server picks
 Docker when the container is running, otherwise SSH if `ADTK_SSH` is set. The
@@ -111,9 +112,10 @@ Agents preinstall the rack and verify tools **before** any recon — never
 3. kali_status
 4. Docker + down → kali_up (vpn on tun0/HTB, else lan)
    VPN → kali_preflight (clamp tun0 mtu 1200 + clock)
-5. kali_bootstrap (once per box)
-6. Verify: nxc|netexec, nmap, hashcat, GetUserSPNs, secretsdump,
-   getST, certipy, bloodyAD, /opt/adtk/ad-auto.py
+5. kali_bootstrap (once per box; detaches — poll kali_logs)
+6. Verify: nxc|netexec, nmap, hashcat, certipy, bloodyAD,
+   GetUserSPNs.py|impacket-GetUserSPNs, secretsdump.py|impacket-secretsdump,
+   getST.py|impacket-getST, /opt/adtk/ad-auto.py
 7. Only then: ad_plan / ad_auto / kali_exec
 8. logs_read auto/state.json + auto/report.txt
 9. After a BloodHound collect: bh_next → ONE kali_exec for the printed edge

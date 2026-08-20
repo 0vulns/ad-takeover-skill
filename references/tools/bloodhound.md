@@ -25,7 +25,8 @@ bloodhound-ce-python -u {{USER}} -p '{{PASS}}' -d {{DOMAIN}} \
   -dc {{DC_FQDN}} -ns {{NS}} -c All --zip
 ```
 
-`-ns {{NS}}` is not optional. If Kali uses 8.8.8.8 the zip is empty.
+- `-ns {{NS}}` is not optional. If Kali uses 8.8.8.8 the zip is empty.
+- `mkdir -p` the `-o` directory first. nmap/bloodhound abort silently into a missing path.
 
 ## Next edge (no GUI)
 
@@ -53,7 +54,7 @@ Mark every cracked user **owned** before you query. An unmarked graph lies.
 | Symptom | Next |
 | --- | --- |
 | DNS / KDC errors | `/etc/hosts` + `-ns {{NS}}` |
-| empty zip | wrong `-d` or collector. Confirm with nxc |
+| empty zip / `bh-next` “no BloodHound JSON” | bloodhound-python `--zip` often writes a 0-entry archive. `rm *.zip` and point bh-next at the extracted JSON dir |
 | `bh-next` “none of … found” | SAM in the zip is `USER@DOMAIN`. pass the SAM only |
 | no path to DA | ACL/ADCS/session/GPO/MAQ — not more spray |
 | path is GenericWrite on a user | `shadow.md` |

@@ -58,7 +58,7 @@ certipy shadow auto -u {{USER}}@{{DOMAIN}} -p '{{PASS}}' -account TARGET -dc-ip 
 | 401 on certsrv | need a user in the enrollment group, or relay |
 | `CERTSRV_E_ENROLL_DENIED` | wrong template / not in enroll group |
 | `KDC_ERR_PADATA_TYPE_NOSUPP` | PKINIT off. Use the NT hash Certipy printed, not the TGT |
-| clock skew on auth | ntpdate, retry `auth -pfx` |
+| clock skew on auth | ntpdate / ntpsec-ntpdate, retry `auth -pfx` |
 | ESC4 restore failed | you still have the `-save-old` json — put the template back (lab hygiene) |
 
 ## Chain

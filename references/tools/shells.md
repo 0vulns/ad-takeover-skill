@@ -50,6 +50,9 @@ Once on the box: `onhost.md`. From Kali, prefer `nxc -M lsassy` before you RDP.
 | Protected Users | getTGT, never PTH |
 | WinRM filtered / 5985 closed | `smbclient.py` (C$) or `atexec` with the hash — not evil-winrm |
 | atexec `&`-chained command returns empty | one command per `atexec` call; the quoting drops chained `&`/`&&` |
+| GUI exe launched over WinRM exits in <6 s | session-0 has no desktop. Do not `Start-Process` / `start /b`. Pattern: `nohup` on Kali wrapping synchronous `nxc winrm … -x 'cmd /c "cd /d C:\Ad && agent.exe"'`. `exit 124` ⇒ probably alive — `tasklist` from a fresh session before retrying |
+| WinRM "Executed command" but no listing/hash | `tail -N` swallowed the output. Rerun with `grep -a`; never truncate a first attempt |
+| `impacket-smbclient: unrecognized arguments: -windows-auth` | flag removed in impacket 0.14. NTLM is the default — drop it |
 | RDP allowed, exec not | you are a desktop user. dump files, not LSASS |
 | mssqlclient but not sysadmin | impersonate / links (`impacket.md`) |
 

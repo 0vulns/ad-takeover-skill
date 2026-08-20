@@ -14,7 +14,7 @@ black-holed (`Connection reset by peer`) even though AS-REQs succeed. Clamp it
 and sync the clock — re-run after any VPN reconnect:
 ```
 /opt/adtk/preflight.sh {{DC}} tun0 1200
-# manual: ip link set dev tun0 mtu 1200 ; ntpdate -u {{DC}}
+# manual: ip link set dev tun0 mtu 1200 ; ntpdate -u {{DC}}   # or ntpsec-ntpdate
 # PMTU probe: ping -M do -s 1400 -c1 {{DC}}  (fails => path MTU below full segment)
 ```
 
@@ -61,6 +61,17 @@ Landed a low-priv shell? `tools/lpe.md`: `whoami /priv` first — SeImpersonate
 (potato) or SeBackupPrivilege (offline NTDS/SAM) is the usual SYSTEM path. LPE is
 for a cred, not the goal — the goal is DCSync (16).
 
+**Deploy an operator payload as DA** (lab only, after takeover): triage on Kali
+first (`unzip -l`, `file`, `objdump -p | grep "DLL Name"`, `strings`) — never
+copy a zip you have not listed. Upload over SMB (`printf 'lcd …\nuse C$\nput f\nexit\n' | impacket-smbclient 'DOM/user:pw@dc'` — no `-windows-auth` in
+impacket 0.14). `Expand-Archive` over WinRM. Launch with an explicit working
+directory (license files resolve against CWD). GUI-subsystem binaries on a
+headless DC live in session 0: detached `Start-Process` / `start /b` die at
+channel teardown; the surviving pattern is `nohup` on Kali + synchronous
+`cmd /c cd /d C:\Ad && agent.exe` over WinRM. Runner `exit 124` usually means
+the payload is **alive** — confirm with a fresh-session `tasklist` before
+retrying. Never truncate a first attempt's output with `tail -N`.
+
 ## 10 ACL + MAQ + shadow + RBCD
 GenericAll / GenericWrite / WriteDACL / WriteOwner / ForceChangePassword /
 AddSelf / AddMember. `bh-next` + bloodyAD `get writable`.
@@ -76,7 +87,9 @@ findDelegation. RBCD via a computer you can write. Unconstrained = coerce + extr
 GPP cpassword, writable GPO → SYSTEM task, ReadLAPSPassword, msDS-ManagedPassword.
 
 ## 14 MSSQL
-`mssql-hop.py`. Impersonate, linked servers, xp_cmdshell. Cross-domain hop on GOAD.
+`mssql-hop.py`. Impersonate, linked servers, xp_cmdshell. Cross-domain hop on
+GOAD. If `EXEC AT [BRAAVOS]` times out on a Ludus/WS2022 build, the
+`data_source` is stale — own CASTELBLACK and BRAAVOS directly.
 
 ## 15 Trusts
 `--trusts`, then `trusthop`: raiseChild / extra-SID only if SID filtering is off.

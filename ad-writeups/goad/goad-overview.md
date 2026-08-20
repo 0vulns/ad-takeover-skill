@@ -45,3 +45,7 @@ Full 01–16 chain. Prefer:
 `adcs` → `mssql` → `trusts` / `trusthop` → `dcsync`
 
 Profile: `--profile goad`
+
+Ludus/WS2022 rebuilds of this topology: `goad-ludus.md` (stock ansible still
+21/23; `daenerys.targaryen` already essos DA; CASTELBLACK→BRAAVOS link often
+stale — own both MSSQL members directly).

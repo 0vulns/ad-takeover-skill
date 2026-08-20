@@ -23,7 +23,7 @@ Use this to practice one technique across multiple authorized labs.
 | S4U getST `ldap/` for DCSync | — | — | Endgame |
 | No WinRM → smbclient/atexec | — | — | Endgame |
 | Unconstrained delegation | — | CASTELBLACK-style | — |
-| MSSQL impersonate / links | Escape, EscapeTwo | CASTELBLACK → BRAAVOS | — |
+| MSSQL impersonate / links | Escape, EscapeTwo | CASTELBLACK → BRAAVOS (Ludus: link often stale — own both engines) | — |
 | Cross-forest trust | DarkZero, PingPong | NORTH → SEVENKINGDOMS → ESSOS | — |
 | LAPS / gMSA | Timelapse-adjacent, Pirate | jorah / gMSA reads | — |
 | Pre2k computer accounts | Pirate | — | — |

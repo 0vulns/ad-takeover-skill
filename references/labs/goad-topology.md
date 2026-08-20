@@ -1,6 +1,8 @@
 # GOAD topology (full lab, 5 VMs / 2 forests / 3 domains)
 
 IPs assume `ip_range = 192.168.56`. Last octet is fixed by the lab.
+Ludus/WS2022 rebuilds keep this layout (OS versions differ) — see
+`ad-writeups/goad/goad-ludus.md`.
 
 ## Domains
 
@@ -18,11 +20,11 @@ IPs assume `ip_range = 192.168.56`. Last octet is fixed by the lab.
 | braavos | braavos.essos.local | .23 | WS2016 | MSSQL, SMB. Defender on. |
 
 MSSQL:
-
 - CASTELBLACK `sa` = `Sup1_sa_P@ssw0rd!` — admin: `NORTH\jon.snow`
   - `EXECUTE AS USER` arya.stark → dbo
   - `EXECUTE AS LOGIN` samwell.tarly → sa, brandon.stark → jon.snow
-  - Linked server to BRAAVOS as sa (`jon.snow`)
+  - Linked server to BRAAVOS as sa (`jon.snow`) — Ludus/WS2022: this
+    `data_source` is often stale; own BRAAVOS directly (`khal.drogo`)
 - BRAAVOS `sa` = `sa_P@ssw0rd!Ess0s` — admin: `ESSOS\khal.drogo`
   - Link back toward CASTELBLACK (`jorah.mormont` → sa)
 

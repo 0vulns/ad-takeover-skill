@@ -38,6 +38,7 @@ https://github.com/seriotonctf/HackTheBox-AD-Machines
 | Lab | Scope | Core techniques |
 | --- | --- | --- |
 | GOAD | 3 domains, 2 forests | AS-REP, spray, Kerberoast, ACL ladder, ADCS ESC, MSSQL links, trusts, LAPS, gMSA |
+| GOAD-on-Ludus (WS2022) | same topology | stock ansible 21/23; lord.varys GenericAll → EA; daenerys pre-seeded essos DA; CASTELBLACK→BRAAVOS link stale — own both MSSQL directly · [notes](goad/goad-ludus.md) |
 | GOAD-Light | Smaller subset | Same primitives, fewer hosts |
 | GOAD-Mini | Minimal | Condensed |
 

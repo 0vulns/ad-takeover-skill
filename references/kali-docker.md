@@ -69,7 +69,26 @@ Two things bite on VPN labs before any attack — the preflight handles both:
 ## Clock
 
 Clock skew breaks Kerberos (`KRB_AP_ERR_SKEW`). If tickets fail: `ntpdate -u {{DC}}`
-or `timedatectl` against the DC. The preflight runs `ntpdate` for you.
+or `ntpsec-ntpdate -u {{DC}}` or `timedatectl` against the DC. The preflight
+runs whichever binary is present.
+
+## VMware Fusion recovery (SSH Kali)
+
+A hung guest during `bootstrap.sh` is usually `kali-linux-headless` restarting
+networking — that is why SSH bootstrap no longer installs the metapackage.
+
+If the VM wedges anyway:
+
+1. Do **not** wait on `runScriptInGuest` / `getGuestIPAddress` — they hang when
+   tools are dead. Tail `vmware.log` for `GuestRpcSendTimedOut`.
+2. Hard reset often leaves tools dead. Full `vmrun stop hard` then start.
+3. Never run `vmrun start VMX nogui` under a short shell timeout — it kills
+   power-on mid-flight (`Postpone the command. VM not running`). Always
+   `nohup vmrun start VMX nogui &`.
+4. If a vmx process is alive but the VM is "not running": stale lock
+   `*.vmx.lck`. Kill the zombie vmx, `rm -rf *.vmx.lck`, start again.
+5. macOS TCC often blocks `screencapture` of the Fusion window. Diagnose from
+   `vmware.log`, not screenshots.
 
 ## Sanity
 
@@ -84,7 +103,8 @@ If ping works but SMB does not, the container is on the wrong L2 domain.
 
 ## Logs (per target)
 
-`/logs` is the bind-mount base; `ad-auto.py` writes one tree per DC:
+`/logs` is the Docker bind-mount base; an SSH Kali uses `ADTK_LOGS` (usually
+`/home/kali/logs`). `ad-auto.py` writes one tree per DC:
 
 ```
 /logs/<dc-ip>/

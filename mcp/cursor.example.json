@@ -8,6 +8,18 @@
         "ADTK_CONTAINER": "adtk-kali",
         "ADTK_COMPOSE": "/ABSOLUTE/PATH/ad-takeover/docker"
       }
+    },
+    "adtk-kali-ssh": {
+      "command": "python3",
+      "args": ["/ABSOLUTE/PATH/ad-takeover/mcp/server.py"],
+      "env": {
+        "ADTK_TRANSPORT": "ssh",
+        "ADTK_SSH": "kali@192.168.56.200",
+        "ADTK_SSH_PORT": "22",
+        "ADTK_SSH_KEY": "/ABSOLUTE/PATH/.ssh/id_ed25519",
+        "ADTK_LOGS": "/home/kali/logs",
+        "ADTK_SUDO_PASS": "kali"
+      }
     }
   }
 }
