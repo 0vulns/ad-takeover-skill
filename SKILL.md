@@ -103,9 +103,9 @@ BloodHound/DCSync with `fan.sh` instead of serializing; and crack on the HOST
 enumerating. `ad-auto --profile goad` sprays stock creds first and time-boxes
 its on-box crack (`ADTK_CRACK_BUDGET`). Full doctrine: `references/steps.md`
 "Go fast" + `references/mcp.md`. Stop at DCSync proof; persistence is a separate
-task. Need a CTF flag? `revshell.sh flags <dc> -u Administrator -H <NT>` sweeps
-every flag location in one call — don't loop `atexec 'type flag.txt'`
-(`tools/revshell.md`).
+task. Need a CTF flag? `revshell.sh flags -u Administrator -H <NT>` sweeps every
+flag location on the DC in one call (DC-only, `$ADTK_DC`) — don't loop `atexec
+'type flag.txt'` (`tools/revshell.md`).
 
 ## Quick start
 

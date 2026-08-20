@@ -6,20 +6,27 @@ dozen MCP round-trips (tokens) on one-off `atexec 'type flag.txt'` calls.
 Public tools only (PowerShell TCP / ConPtyShell / nc.exe) — same category as
 `evil-winrm`/`psexec`. No third-party C2, no malware. Lab / RoE only.
 
+**DC only.** The takeover flag lives on the domain controller's Administrator
+desktop. `flags` targets the DC and refuses a non-DC host unless you pass
+`--any` — don't fan reverse shells across member servers to hunt a flag. The DC
+is read from `$ADTK_DC` (the MCP server exports it from the current target), so
+the IP is usually optional.
+
 ## Two paths — pick by intent
 
-- **Just want the flag / a couple of files → one-shot sweep.** Do not open an
-  interactive shell for this. One command finds and prints every flag file:
+- **Just want the flag / a couple of files → one-shot sweep on the DC.** Do not
+  open an interactive shell for this. One command finds and prints every flag:
 
 ```
-/opt/adtk/revshell.sh flags {{DC}} -u {{USER}} -p '{{PASS}}' -d {{DOMAIN}}
+/opt/adtk/revshell.sh flags -u {{USER}} -p '{{PASS}}' -d {{DOMAIN}}          # DC from $ADTK_DC
 /opt/adtk/revshell.sh flags {{DC}} -u Administrator -H {{HASH}} -d {{DOMAIN}}
-/opt/adtk/revshell.sh flags {{DC}} -u Administrator -H {{HASH}} --exec smb   # 5985 closed
+/opt/adtk/revshell.sh flags {{DC}} -u Administrator -H {{HASH}} --exec smb    # 5985 closed
 ```
 
-  It runs a single WinRM `powershell` sweep of `C:\Users\**` + `C:\` for
-  `user.txt` / `root.txt` / `flag*.txt` / `proof.txt` and prints `path: contents`.
-  `--exec smb` falls back to reading the usual desktop flags off `C$`.
+  It runs a single WinRM `powershell` sweep of the DC's `C:\Users\**` + `C:\`
+  for `user.txt` / `root.txt` / `flag*.txt` / `proof.txt` and prints
+  `path: contents`. `--exec smb` falls back to reading the usual desktop flags
+  off the DC's `C$`. A member-server flag (rare) needs an explicit IP + `--any`.
 
 - **Need to explore interactively → real reverse shell, in a tty.** Catch it in
   an interactive `docker exec -it` / `ssh` session, **never over MCP** — the
@@ -56,7 +63,8 @@ nxc winrm {{DC}} -u {{USER}} -p '{{PASS}}' -x '<paste the payload>'
 
 | Symptom | Next |
 | --- | --- |
-| flag sweep prints nothing | wrong exec method — try `--exec smb`, or you are not admin on that host |
+| flag sweep prints nothing | wrong exec method — try `--exec smb`, or you are not admin on the DC |
+| `is not the DC ($ADTK_DC=…)` | you pointed at a member server — target the DC, or `--any` if the flag really is off-DC |
 | WinRM closed (no 5985) | `revshell.sh flags … --exec smb` (C$), or `atexec 'type …'` one file at a time |
 | payload fires then dies instantly | AMSI/Defender on a WS2019+ box — use `conpty` served over HTTP, or dump the file over SMB instead of shelling |
 | shell connects then hangs on `dir` | VPN MTU — `ip link set dev tun0 mtu 1200` |
@@ -64,6 +72,6 @@ nxc winrm {{DC}} -u {{USER}} -p '{{PASS}}' -x '<paste the payload>'
 
 ## Chain
 
-Owned a host → `revshell.sh flags` for the proof, or a tty reverse shell for
+Owned the DC → `revshell.sh flags` for the proof, or a tty reverse shell for
 real work → `onhost.md` (LSASS / SAM / creds). The takeover proof is still
 DCSync (`steps.md` §16), not a flag.

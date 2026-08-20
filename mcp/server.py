@@ -27,7 +27,7 @@ VERSION = "1.3.0"
 
 # Per-target log tree: logs/<dc-ip>/. Set once from the DC (ad_plan / ad_auto /
 # kali_preflight) so loot reads/writes and digests land in that target's dir.
-_CURRENT_TARGET = {"dir": REMOTE_LOGS}
+_CURRENT_TARGET = {"dir": REMOTE_LOGS, "dc": ""}
 
 
 def _san_target(dc: str) -> str:
@@ -38,6 +38,7 @@ def _set_target(dc: str | None) -> None:
     t = _san_target(dc or "")
     if t:
         _CURRENT_TARGET["dir"] = f"{REMOTE_LOGS}/{t}"
+        _CURRENT_TARGET["dc"] = t
 
 
 def _logdir() -> str:
@@ -202,6 +203,10 @@ LONG_HINT = re.compile(
 
 def _remote_env() -> str:
     parts = [f"export ADTK_LOGS={_q(REMOTE_LOGS)}"]
+    # revshell.sh flags is DC-only; export the current DC so it targets it.
+    dc = _CURRENT_TARGET.get("dc") or os.environ.get("ADTK_DC")
+    if dc:
+        parts.append(f"export ADTK_DC={_q(dc)}")
     sudo = os.environ.get("ADTK_SUDO_PASS") or os.environ.get("KALI_SUDO_PASS")
     if sudo:
         parts.append(f"export ADTK_SUDO_PASS={_q(sudo)}")

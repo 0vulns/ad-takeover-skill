@@ -130,12 +130,14 @@ operator at an interactive `docker exec -it` / SSH tty.
   cracks → feed the recovered cred back into `ad_auto` / `kali_exec`.
   `ad_auto` time-boxes its own crack to `ADTK_CRACK_BUDGET` and prints this
   offload in `next_manual`.
-- **Grab the flag in one call.** Don't spend a dozen `kali_exec` round-trips on
-  `atexec 'type flag.txt'` (tokens). `kali_exec command="/opt/adtk/revshell.sh
-  flags <dc> -u Administrator -H <NT> -d <dom>"` sweeps every flag location in
-  one WinRM pass (`--exec smb` when 5985 is closed). Interactive reverse shells
-  (`revshell.sh payload/listen`) are caught in a `docker exec -it` tty, never
-  held open over MCP.
+- **Grab the flag on the DC in one call.** Don't spend a dozen `kali_exec`
+  round-trips on `atexec 'type flag.txt'` (tokens). `kali_exec
+  command="/opt/adtk/revshell.sh flags -u Administrator -H <NT> -d <dom>"`
+  sweeps every flag location on the DC in one WinRM pass (`--exec smb` when 5985
+  is closed). It is DC-only: the server exports `ADTK_DC` from the current
+  target, so the IP is optional and a non-DC host is refused unless you add
+  `--any`. Interactive reverse shells (`revshell.sh payload/listen`) are caught
+  in a `docker exec -it` tty, never held open over MCP.
 
 **Host MCP timeouts (~30s) kill foreground calls.** `ad_auto` and `kali_bootstrap`
 always detach. `kali_exec` auto-detaches nmap / bloodhound / secretsdump /
