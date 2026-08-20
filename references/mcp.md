@@ -116,6 +116,21 @@ re-`kali_bootstrap`. Never `apt`/`pip` ad-hoc inside the kill chain.
 Do not open a Relayer / Responder / mitm6 via MCP — those hang. Point the
 operator at an interactive `docker exec -it` / SSH tty.
 
+## Go fast (both live runs were >45 min)
+
+- **Fan out, don't serialize.** Per-domain BloodHound / DCSync and stock-cred
+  spray run concurrently via `kali_exec command="… | /opt/adtk/fan.sh"` (one
+  shell line per job, `ADTK_FANOUT` at a time). `spray-stock.sh <dc…>` is the
+  GOAD stock-cred fast path (~1 min, often DA-grade) — run it before recon.
+  Never fan out a blind wordlist spray (parallel guesses still lock accounts).
+- **Crack off the VM.** The Kali box has no GPU. Capture the hash on Kali, then:
+  `logs_read` the `hashes/*.txt` file → save it on the host → run
+  `host-crack.sh --mode <m> --hash <file> --background` with the **`Shell`**
+  tool (host-side, not `kali_exec`) → keep driving the chain over MCP while it
+  cracks → feed the recovered cred back into `ad_auto` / `kali_exec`.
+  `ad_auto` time-boxes its own crack to `ADTK_CRACK_BUDGET` and prints this
+  offload in `next_manual`.
+
 **Host MCP timeouts (~30s) kill foreground calls.** `ad_auto` and `kali_bootstrap`
 always detach. `kali_exec` auto-detaches nmap / bloodhound / secretsdump /
 hashcat / john / apt / bootstrap. Poll with `kali_logs`; never sit on the

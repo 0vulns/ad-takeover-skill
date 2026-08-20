@@ -96,6 +96,15 @@ ldap-utils, smbclient, krb5-user. Missing after bootstrap → add it to
 Do **not** start Relayer / Responder / mitm6 via MCP — they hang. Interactive
 `docker exec -it` / SSH tty only.
 
+Go fast (both live runs were >45 min): on known labs run `spray-stock.sh <dc…>`
+(stock creds, parallel, often DA-grade) before recon; fan out per-domain
+BloodHound/DCSync with `fan.sh` instead of serializing; and crack on the HOST
+(`host-crack.sh --background`, the Kali VM has no GPU) while you keep
+enumerating. `ad-auto --profile goad` sprays stock creds first and time-boxes
+its on-box crack (`ADTK_CRACK_BUDGET`). Full doctrine: `references/steps.md`
+"Go fast" + `references/mcp.md`. Stop at DCSync proof; persistence is a separate
+task.
+
 ## Quick start
 
 ```bash

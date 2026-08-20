@@ -107,7 +107,9 @@ if [ -d /opt/adtk/conf ]; then
   fi
 fi
 
-run_priv chmod +x /opt/adtk/ad-auto.py 2>/dev/null || chmod +x /opt/adtk/ad-auto.py 2>/dev/null || true
+for f in ad-auto.py bh-next.py mssql-hop.py fan.sh spray-stock.sh host-crack.sh; do
+  run_priv chmod +x "/opt/adtk/$f" 2>/dev/null || chmod +x "/opt/adtk/$f" 2>/dev/null || true
+done
 
 # Verify the rack. Same check the MCP loop runs (SKILL.md step 6 / mcp.md).
 # Debian/Kali ships Impacket as impacket-secretsdump, not secretsdump.py.

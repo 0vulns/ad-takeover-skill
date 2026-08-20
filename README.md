@@ -140,6 +140,14 @@ lateral → acl → delegation → adcs → sysvol/laps → mssql → trusts →
 Stop condition: DCSync `KRBTGT` in every in-scope domain and act as DA/EA in the
 forest root.
 
+Go fast: on known labs `scripts/spray-stock.sh <dc…>` checks the documented
+stock creds in parallel (often a DA-grade foothold in ~1 min) before recon;
+`scripts/fan.sh` runs per-domain BloodHound/DCSync concurrently instead of
+serially; and `scripts/host-crack.sh` cracks roast hashes on the host (Metal/GPU)
+because the Kali VM has none — `ad-auto.py` time-boxes its on-box crack
+(`ADTK_CRACK_BUDGET`) and points you at the offload. See `references/steps.md`
+"Go fast".
+
 ## Layout
 
 ```
@@ -149,8 +157,9 @@ HISTORY.md          changelog
 CONTRIBUTING.md     conventions + safety rules
 LICENSE             MIT + authorized-use notice
 docker/             compose (LAN + VPN), Dockerfile, .env.example
-scripts/            up.sh, bootstrap.sh, preflight.sh, ad-auto.py, bh-next.py, mssql-hop.py
-conf/               *.example templates (hosts, krb5, lab wordlist) — copy + edit per lab
+scripts/            up.sh, bootstrap.sh, preflight.sh, ad-auto.py, bh-next.py, mssql-hop.py,
+                    fan.sh (parallel), spray-stock.sh (stock creds), host-crack.sh (host-side crack)
+conf/               *.example templates (hosts, krb5, lab wordlist, creds.goad) — copy + edit per lab
 mcp/                stdio MCP server + example configs (Cursor / Claude)
 evals/              skill regression cases (evals.json)
 references/

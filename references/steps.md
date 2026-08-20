@@ -5,6 +5,30 @@ Tokens: `{{DC}} {{DOMAIN}} {{DC_FQDN}} {{USER}} {{PASS}} {{HASH}} {{CIDR}} {{NS}
 `scripts/ad-auto.py` is the automated source of truth. This file is the
 agent checklist — when to skip, what “done” means. Commands: `commands.md`.
 
+## Go fast (both live runs were >45 min — most of it avoidable)
+
+Three habits cut the wall clock; the setup ladders (MTU, VM recovery, package
+drift) are already handled by the preflight and bootstrap.
+
+- **Fast path first on known labs.** On GOAD family, spray the documented stock
+  creds in parallel *before* recon/AS-REP — `spray-stock.sh {{DC}} <dc2> <dc3>`.
+  `.refinements/2.md` got 21/23 valid (incl. DA-grade) in ~1 min this way.
+  `ad-auto --profile goad` now sprays stock creds before roasting for you.
+- **Fan out per-domain / per-host work, don't serialize it.** BloodHound ×N,
+  DCSync ×N, spray ×N all run concurrently with `fan.sh` (`commands.md`).
+  Serial per-domain work was the biggest sink on the 3-domain lab.
+- **Crack on the HOST, never block the chain.** The Kali VM has no GPU
+  (`.refinements/1.md` dead-ended on CPU john). Capture the hash on Kali, pull
+  it down, run `host-crack.sh --background` on the host, and keep enumerating
+  (BloodHound / ACL / ADCS) while it runs. `ad-auto` time-boxes its on-box crack
+  to `ADTK_CRACK_BUDGET` (90s) and then hands you the offload command.
+
+Rough budget per phase (VPN lab): box+preflight ≤5 min, recon ≤3, foothold
+(stock spray / roast) ≤5, BloodHound + bh-next ≤5, the winning edge ≤10.
+**Stop at proof:** DCSync of every in-scope KRBTGT + acting DA/EA is the
+takeover. Post-takeover tooling/persistence is a separate, optional task — do
+not let it pad the takeover clock.
+
 ## 01 Attack box
 Done: `nxc smb {{DC}}` and `nxc ldap {{DC}}` respond. Clock within 5 minutes.
 Skip macvlan on HTB VPN — you already have `tun0`. Use `docker-compose.vpn.yml`.

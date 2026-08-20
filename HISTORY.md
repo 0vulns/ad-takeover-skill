@@ -60,3 +60,16 @@ Authorized-lab AD takeover skill. No website. Lab / RoE only.
     `ADTK_SUDO_PASS` for stock Kali; VMware Fusion recovery (stale `*.vmx.lck`,
     never `vmrun start` under a short timeout). New `ad-writeups/goad/goad-ludus.md`.
     Trail: `.refinements/2.md`.
+15. **Time optimization** — both live runs ran >45 min, most of it avoidable.
+    Three levers, kept out of the serial decision loop: (a) parallel fan-out
+    helpers — `scripts/fan.sh` (bounded `xargs -P` executor) plus
+    `scripts/spray-stock.sh` + `conf/creds.goad.example` for a stock-cred fast
+    path (`.refinements/2.md` got 21/23 valid in ~1 min before recon); (b)
+    host-offloaded cracking — `scripts/host-crack.sh` (hashcat Metal/GPU, john
+    fallback, time-boxed, `--background`) because the Kali VM has no GPU, and
+    `ad-auto.py` `crack()` now caps its on-box rockyou pass at
+    `ADTK_CRACK_BUDGET` (90s) and prints the host-offload in `next_manual`
+    instead of blocking; (c) stock-first ordering — `decide()` sprays before
+    AS-REP on `--profile goad`, and `act_spray` runs the documented stock creds
+    up front. Doctrine added to `steps.md` ("Go fast" + per-phase budget +
+    stop-at-proof), `commands.md`, `mcp.md`, `crack.md`, `SKILL.md`, `README.md`.

@@ -1,0 +1,41 @@
+# Stock GOAD ansible-seed credentials (public lab defaults, NOT real secrets).
+# One user:password per line, across all three domains. spray-stock.sh feeds
+# these to a parallel nxc check so a known-lab foothold (often DA-grade) lands
+# in ~1 min, before any recon/AS-REP/user-list building.
+#
+# Source: references/labs/goad-topology.md. Verify on your build; Ludus/WS2022
+# rebuilds keep the stock ansible defaults (21/23 valid in .refinements/2.md).
+# Copy to creds.goad and edit for your lab. Blank lines and #comments ignored.
+#
+# north.sevenkingdoms.local
+hodor:hodor
+brandon.stark:iseedealpeople
+brandon.stark:iseedeadpeople
+rickon.stark:Winter2022
+jon.snow:iknownothing
+samwell.tarly:Heartsbane
+arya.stark:Needle
+eddard.stark:FightP3aceAndHonor!
+catelyn.stark:robbsansabradonaryarickon
+robb.stark:sexywolfy
+sansa.stark:345ertdfg
+jeor.mormont:_L0ngCl@w_
+sql_svc:YouWillNotKerboroast1ngMeeeeee
+# sevenkingdoms.local
+tywin.lannister:powerkingftw135
+jaime.lannister:cersei
+tyron.lannister:Alc00L&S3x
+joffrey.baratheon:1killerlion
+renly.baratheon:lorastyrell
+stannis.baratheon:Drag0nst0ne
+lord.varys:_W1sper_$
+robert.baratheon:iamthekingoftheworld
+cersei.lannister:il0vejaime
+petyer.baelish:@littlefinger@
+maester.pycelle:MaesterOfMaesters
+# essos.local
+missandei:fr3edom
+khal.drogo:horse
+viserys.targaryen:GoldCrown
+jorah.mormont:H0nnor!
+daenerys.targaryen:BurnThemAll!
