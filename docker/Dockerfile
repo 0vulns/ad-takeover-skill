@@ -17,7 +17,7 @@ COPY conf/ /opt/adtk/conf/
 COPY references/ /opt/adtk/references/
 
 RUN chmod +x /opt/adtk/bootstrap.sh /opt/adtk/ad-auto.py /opt/adtk/bh-next.py /opt/adtk/mssql-hop.py \
-      /opt/adtk/fan.sh /opt/adtk/spray-stock.sh /opt/adtk/host-crack.sh \
+      /opt/adtk/fan.sh /opt/adtk/spray-stock.sh /opt/adtk/host-crack.sh /opt/adtk/revshell.sh \
  && /opt/adtk/bootstrap.sh
 
 WORKDIR /logs

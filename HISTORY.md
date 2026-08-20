@@ -73,3 +73,13 @@ Authorized-lab AD takeover skill. No website. Lab / RoE only.
     AS-REP on `--profile goad`, and `act_spray` runs the documented stock creds
     up front. Doctrine added to `steps.md` ("Go fast" + per-phase budget +
     stop-at-proof), `commands.md`, `mcp.md`, `crack.md`, `SKILL.md`, `README.md`.
+16. **Reverse shell + one-shot flag finder** — stop burning MCP round-trips
+    (tokens) on N one-off `atexec 'type flag.txt'` calls. `scripts/revshell.sh`:
+    `flags` runs a single WinRM `powershell` sweep of `C:\Users\**` + `C:\` for
+    `user.txt`/`root.txt`/`flag*.txt`/`proof.txt` (with an `--exec smb` C$
+    fallback when 5985 is closed); `payload` prints public reverse-shell
+    one-liners (PowerShell TCP / base64 `-enc` / ConPtyShell PTY / nc.exe) and
+    `listen` prints the tty catcher — interactive shells are caught in a tty,
+    never held open over MCP (~30s cap kills them). New `tools/revshell.md`,
+    wired into `tools.md`, `shells.md`, `steps.md` §16, `commands.md`; chmod in
+    `bootstrap.sh`/`Dockerfile`. Public tools only, lab/RoE.

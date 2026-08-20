@@ -158,7 +158,8 @@ CONTRIBUTING.md     conventions + safety rules
 LICENSE             MIT + authorized-use notice
 docker/             compose (LAN + VPN), Dockerfile, .env.example
 scripts/            up.sh, bootstrap.sh, preflight.sh, ad-auto.py, bh-next.py, mssql-hop.py,
-                    fan.sh (parallel), spray-stock.sh (stock creds), host-crack.sh (host-side crack)
+                    fan.sh (parallel), spray-stock.sh (stock creds), host-crack.sh (host-side crack),
+                    revshell.sh (reverse shell + one-shot flag sweep)
 conf/               *.example templates (hosts, krb5, lab wordlist, creds.goad) — copy + edit per lab
 mcp/                stdio MCP server + example configs (Cursor / Claude)
 evals/              skill regression cases (evals.json)

